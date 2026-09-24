@@ -24,7 +24,7 @@ function getCurrentUser() {
 
 function requireLogin() {
     if (!isLoggedIn()) {
-        header('Location: login.php');
+        header('Location: login');
         exit;
     }
 }
@@ -33,10 +33,10 @@ function requireRole($role) {
     requireLogin();
     if ($_SESSION['role'] !== $role) {
         if ($_SESSION['role'] === 'operator') {
-            header('Location: packing.php');
+            header('Location: packing');
             exit;
         } else {
-            header('Location: admin.php');
+            header('Location: admin');
             exit;
         }
     }

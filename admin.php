@@ -11,6 +11,10 @@ $user = getCurrentUser();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Semua Data Hasil Packaging</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -20,7 +24,7 @@ $user = getCurrentUser();
         <!-- Clean Modern Light Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <a href="admin.php" class="sidebar-brand">
+                <a href="admin" class="sidebar-brand">
                     <div class="sidebar-brand-icon" style="background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);">
                         <span class="material-symbols-outlined">shield_person</span>
                     </div>
@@ -35,13 +39,13 @@ $user = getCurrentUser();
                 <div>
                     <div class="sidebar-section-title">Audit & Analitik</div>
                     <nav class="sidebar-nav">
-                        <a href="admin.php" class="nav-link active">
+                        <a href="admin" class="nav-link active">
                             <span class="material-symbols-outlined">analytics</span>
                             <span>Data Packaging</span>
                             <span class="nav-badge" style="background: #f3e8ff; color: #7c3aed;">ALL</span>
                         </a>
 
-                        <a href="packing.php" class="nav-link">
+                        <a href="packing" class="nav-link">
                             <span class="material-symbols-outlined">videocam</span>
                             <span>Layar Packing</span>
                         </a>
@@ -89,7 +93,7 @@ $user = getCurrentUser();
                     </div>
                 </div>
 
-                <a href="logout.php" class="btn-sidebar-logout">
+                <a href="logout" class="btn-sidebar-logout">
                     <span class="material-symbols-outlined" style="font-size: 16px;">logout</span>
                     <span>Keluar Sistem</span>
                 </a>

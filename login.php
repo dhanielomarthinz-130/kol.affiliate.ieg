@@ -4,7 +4,7 @@ require_once __DIR__ . '/config/auth.php';
 
 if (isLoggedIn()) {
     $user = getCurrentUser();
-    header('Location: ' . ($user['role'] === 'admin' ? 'admin.php' : 'packing.php'));
+    header('Location: ' . ($user['role'] === 'admin' ? 'admin' : 'packing'));
     exit;
 }
 
@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if (loginUser($username, $password)) {
             $user = getCurrentUser();
-            header('Location: ' . ($user['role'] === 'admin' ? 'admin.php' : 'packing.php'));
+            header('Location: ' . ($user['role'] === 'admin' ? 'admin' : 'packing'));
             exit;
         } else {
             $error = 'Username atau password salah!';
@@ -32,6 +32,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - KOL Affiliate Video Packing Station</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="login-page">
@@ -52,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="login.php">
+        <form method="POST" action="login">
             <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
                     <span class="material-symbols-outlined" style="font-size: 16px; color: #2563eb;">person</span>

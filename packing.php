@@ -11,6 +11,10 @@ $user = getCurrentUser();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stasiun Kerja Packing - KOL Affiliate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="workstation-layout">
@@ -20,7 +24,7 @@ $user = getCurrentUser();
         <!-- Clean Modern Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <a href="packing.php" class="sidebar-brand">
+                <a href="packing" class="sidebar-brand">
                     <div class="sidebar-brand-icon">
                         <span class="material-symbols-outlined">inventory_2</span>
                     </div>
@@ -35,7 +39,7 @@ $user = getCurrentUser();
                 <div>
                     <div class="sidebar-section-title">Menu Operator</div>
                     <nav class="sidebar-nav">
-                        <a href="packing.php" class="nav-link active">
+                        <a href="packing" class="nav-link active">
                             <span class="material-symbols-outlined">videocam</span>
                             <span>Layar Packing</span>
                             <span class="nav-badge" style="background:#ecfdf5; color:#059669;">LIVE</span>
@@ -52,7 +56,7 @@ $user = getCurrentUser();
                 <div>
                     <div class="sidebar-section-title">Akses Khusus</div>
                     <nav class="sidebar-nav">
-                        <a href="admin.php" class="nav-link">
+                        <a href="admin" class="nav-link">
                             <span class="material-symbols-outlined">dashboard</span>
                             <span>Portal Admin</span>
                         </a>
@@ -88,7 +92,7 @@ $user = getCurrentUser();
                     </div>
                 </div>
 
-                <a href="logout.php" class="btn-sidebar-logout">
+                <a href="logout" class="btn-sidebar-logout">
                     <span class="material-symbols-outlined" style="font-size: 16px;">logout</span>
                     <span>Keluar Sistem</span>
                 </a>

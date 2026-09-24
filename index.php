@@ -3,14 +3,14 @@
 require_once __DIR__ . '/config/auth.php';
 
 if (!isLoggedIn()) {
-    header('Location: login.php');
+    header('Location: login');
     exit;
 }
 
 $user = getCurrentUser();
 if ($user['role'] === 'admin') {
-    header('Location: admin.php');
+    header('Location: admin');
 } else {
-    header('Location: packing.php');
+    header('Location: packing');
 }
 exit;
