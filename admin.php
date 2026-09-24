@@ -17,16 +17,16 @@ $user = getCurrentUser();
 
     <div class="app-layout">
         
-        <!-- Premium Vertical Sidebar -->
+        <!-- Clean Modern Light Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <a href="admin.php" class="sidebar-brand">
-                    <div class="sidebar-brand-icon" style="background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%);">
-                        <span class="material-symbols-outlined" style="font-size: 26px;">shield_person</span>
+                    <div class="sidebar-brand-icon" style="background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);">
+                        <span class="material-symbols-outlined">shield_person</span>
                     </div>
                     <div>
                         <div class="sidebar-brand-title">KOL AUDIT</div>
-                        <div class="sidebar-brand-sub" style="color: #c084fc;">Admin Portal</div>
+                        <div class="sidebar-brand-sub" style="color: #7c3aed;">Admin Portal</div>
                     </div>
                 </a>
             </div>
@@ -38,7 +38,7 @@ $user = getCurrentUser();
                         <a href="admin.php" class="nav-link active">
                             <span class="material-symbols-outlined">analytics</span>
                             <span>Data Packaging</span>
-                            <span class="nav-badge" style="background: rgba(124, 58, 237, 0.25); color: #c084fc;">ALL</span>
+                            <span class="nav-badge" style="background: #f3e8ff; color: #7c3aed;">ALL</span>
                         </a>
 
                         <a href="packing.php" class="nav-link">
@@ -63,11 +63,10 @@ $user = getCurrentUser();
                     </nav>
                 </div>
 
-                <!-- Server Info Card in Sidebar -->
                 <div style="margin-top: auto;">
-                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; font-size: 0.78rem; color: var(--text-muted);">
-                        <div style="display: flex; align-items: center; gap: 6px; color: #34d399; font-weight: 700; margin-bottom: 4px;">
-                            <span class="material-symbols-outlined" style="font-size: 16px;">storage</span>
+                    <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; font-size: 0.75rem; color: var(--text-muted);">
+                        <div style="display: flex; align-items: center; gap: 5px; color: #059669; font-weight: 700; margin-bottom: 2px;">
+                            <span class="material-symbols-outlined" style="font-size: 15px;">storage</span>
                             <span>Status Penyimpanan</span>
                         </div>
                         Auto-transcoding MP4 H.264 aktif dengan kompresi hemat ruang.
@@ -78,20 +77,20 @@ $user = getCurrentUser();
             <!-- Sidebar User Profile & Logout -->
             <div class="sidebar-footer">
                 <div class="user-profile-widget">
-                    <div class="user-avatar-circle" style="border-color: rgba(124, 58, 237, 0.4); color: #c084fc;">
+                    <div class="user-avatar-circle" style="border-color: #d8b4fe; color: #7e22ce; background: #faf5ff;">
                         <span class="material-symbols-outlined">shield_person</span>
                     </div>
                     <div class="user-profile-details">
                         <div class="user-profile-name"><?= htmlspecialchars($user['name']) ?></div>
                         <div class="user-profile-role role-admin">
-                            <span class="material-symbols-outlined" style="font-size: 13px;">verified</span>
+                            <span class="material-symbols-outlined" style="font-size: 12px;">verified</span>
                             <span>ADMINISTRATOR</span>
                         </div>
                     </div>
                 </div>
 
                 <a href="logout.php" class="btn-sidebar-logout">
-                    <span class="material-symbols-outlined">logout</span>
+                    <span class="material-symbols-outlined" style="font-size: 16px;">logout</span>
                     <span>Keluar Sistem</span>
                 </a>
             </div>
@@ -101,16 +100,18 @@ $user = getCurrentUser();
         <main class="main-viewport">
             
             <!-- Page Top Bar -->
-            <div class="page-top-bar">
-                <div class="page-title-box">
-                    <h1 class="page-title">
-                        <span class="material-symbols-outlined" style="font-size: 32px; color: #a78bfa;">table_view</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <div>
+                    <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-symbols-outlined" style="font-size: 28px; color: #7c3aed;">table_view</span>
                         <span>Semua Data Hasil Packaging</span>
                     </h1>
-                    <p class="page-subtitle">Pusat pemantauan rekaman video, verifikasi nomor resi, dan audit durasi kerja operator packing.</p>
+                    <p style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">
+                        Pusat pemantauan rekaman video, verifikasi nomor resi, dan audit durasi kerja operator packing.
+                    </p>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
                     <a href="packing.php" class="btn btn-outline btn-sm">
                         <span class="material-symbols-outlined">videocam</span>
                         <span>Buka Layar Packing</span>
@@ -126,7 +127,7 @@ $user = getCurrentUser();
             <!-- Summary KPI Cards -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">
+                    <div class="stat-icon" style="background: #eff6ff; color: #2563eb;">
                         <span class="material-symbols-outlined">inventory_2</span>
                     </div>
                     <div>
@@ -136,7 +137,7 @@ $user = getCurrentUser();
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">
+                    <div class="stat-icon" style="background: #ecfdf5; color: #059669;">
                         <span class="material-symbols-outlined">timer</span>
                     </div>
                     <div>
@@ -146,7 +147,7 @@ $user = getCurrentUser();
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(139, 92, 246, 0.15); color: #c084fc;">
+                    <div class="stat-icon" style="background: #faf5ff; color: #7c3aed;">
                         <span class="material-symbols-outlined">monitoring</span>
                     </div>
                     <div>
@@ -156,7 +157,7 @@ $user = getCurrentUser();
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">
+                    <div class="stat-icon" style="background: #fffbeb; color: #d97706;">
                         <span class="material-symbols-outlined">hard_drive</span>
                     </div>
                     <div>
@@ -167,12 +168,12 @@ $user = getCurrentUser();
             </div>
 
             <!-- Filter & Search Card -->
-            <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card" style="margin-bottom: 1.25rem;">
                 <div class="card-body">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) 120px 110px; gap: 12px; align-items: end;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) 110px 100px; gap: 10px; align-items: end;">
                         <div>
                             <label class="form-label">
-                                <span class="material-symbols-outlined" style="font-size: 15px; vertical-align: -2px;">search</span>
+                                <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: -2px;">search</span>
                                 <span>Cari No Resi / Invoice</span>
                             </label>
                             <input type="text" id="searchResi" class="form-control" placeholder="Ketik No Resi..." autocomplete="off">
@@ -180,7 +181,7 @@ $user = getCurrentUser();
 
                         <div>
                             <label class="form-label">
-                                <span class="material-symbols-outlined" style="font-size: 15px; vertical-align: -2px;">badge</span>
+                                <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: -2px;">badge</span>
                                 <span>Operator</span>
                             </label>
                             <select id="filterOperator" class="form-control" style="cursor: pointer;">
@@ -190,7 +191,7 @@ $user = getCurrentUser();
 
                         <div>
                             <label class="form-label">
-                                <span class="material-symbols-outlined" style="font-size: 15px; vertical-align: -2px;">event</span>
+                                <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: -2px;">event</span>
                                 <span>Tanggal Mulai</span>
                             </label>
                             <input type="date" id="filterDateFrom" class="form-control">
@@ -198,21 +199,21 @@ $user = getCurrentUser();
 
                         <div>
                             <label class="form-label">
-                                <span class="material-symbols-outlined" style="font-size: 15px; vertical-align: -2px;">event_available</span>
+                                <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: -2px;">event_available</span>
                                 <span>Tanggal Akhir</span>
                             </label>
                             <input type="date" id="filterDateTo" class="form-control">
                         </div>
 
                         <div>
-                            <button id="btnResetFilter" class="btn btn-outline" style="width: 100%; height: 44px;">
+                            <button id="btnResetFilter" class="btn btn-outline" style="width: 100%; height: 38px;">
                                 <span class="material-symbols-outlined">restart_alt</span>
                                 <span>Reset</span>
                             </button>
                         </div>
 
                         <div>
-                            <button onclick="exportToCSV()" class="btn btn-success" style="width: 100%; height: 44px;" title="Export data ke CSV">
+                            <button onclick="exportToCSV()" class="btn btn-success" style="width: 100%; height: 38px;" title="Export data ke CSV">
                                 <span class="material-symbols-outlined">file_download</span>
                                 <span>CSV</span>
                             </button>
@@ -228,7 +229,7 @@ $user = getCurrentUser();
                         <span class="material-symbols-outlined">video_library</span>
                         <span>Daftar Video Hasil Packing</span>
                     </div>
-                    <div style="font-size: 0.85rem; color: #94a3b8;" id="recordCountInfo">
+                    <div style="font-size: 0.82rem; color: #64748b;" id="recordCountInfo">
                         Memuat data...
                     </div>
                 </div>
@@ -244,7 +245,7 @@ $user = getCurrentUser();
                                     <th>Durasi Packing</th>
                                     <th>Tanggal & Jam WIB</th>
                                     <th>Ukuran File</th>
-                                    <th style="width: 230px;">Aksi & Audit</th>
+                                    <th style="width: 220px;">Aksi & Audit</th>
                                 </tr>
                             </thead>
                             <tbody id="packingsTableBody">
@@ -258,7 +259,7 @@ $user = getCurrentUser();
                     </div>
 
                     <!-- Pagination controls -->
-                    <div style="padding: 1.1rem 1.4rem; display: flex; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border-color);" id="tablePagination">
+                    <div style="padding: 0.85rem 1.25rem; display: flex; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border-color);" id="tablePagination">
                     </div>
                 </div>
             </div>
@@ -271,11 +272,11 @@ $user = getCurrentUser();
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <div style="font-weight: 700; font-size: 1.15rem; color: #ffffff; display: flex; align-items: center; gap: 8px;" id="videoResiTitle">
-                        <span class="material-symbols-outlined" style="color: #60a5fa;">movie</span>
+                    <div style="font-weight: 700; font-size: 1.1rem; color: #0f172a; display: flex; align-items: center; gap: 8px;" id="videoResiTitle">
+                        <span class="material-symbols-outlined" style="color: #2563eb;">movie</span>
                         <span>HASIL PACKING VIDEO</span>
                     </div>
-                    <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 3px;" id="videoMetaInfo">
+                    <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;" id="videoMetaInfo">
                         Detail
                     </div>
                 </div>
@@ -289,9 +290,9 @@ $user = getCurrentUser();
 
                 <!-- Audit Tools: Playback Speed & Download -->
                 <div class="playback-controls">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 0.82rem; color: #94a3b8; font-weight: 600; display: flex; align-items: center; gap: 4px;">
-                            <span class="material-symbols-outlined" style="font-size: 18px; color: #60a5fa;">speed</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.8rem; color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px; color: #2563eb;">speed</span>
                             <span>Kecepatan Audit:</span>
                         </span>
                         <div class="speed-buttons">
@@ -319,10 +320,10 @@ $user = getCurrentUser();
 
     <!-- Modal Kelola Operator -->
     <div class="modal-overlay" id="userModal">
-        <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-content" style="max-width: 620px;">
             <div class="modal-header">
-                <div style="font-weight: 700; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
-                    <span class="material-symbols-outlined" style="color: #60a5fa;">manage_accounts</span>
+                <div style="font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined" style="color: #2563eb;">manage_accounts</span>
                     <span>Manajemen Akun Operator & Admin</span>
                 </div>
                 <button class="btn btn-outline btn-sm" onclick="closeUserModal()">
@@ -332,12 +333,12 @@ $user = getCurrentUser();
 
             <div class="modal-body">
                 <!-- Add User Form -->
-                <form id="addUserForm" style="background: rgba(255,255,255,0.02); padding: 1.25rem; border-radius: 14px; margin-bottom: 1.5rem; border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.75rem; color: #60a5fa; display: flex; align-items: center; gap: 6px;">
-                        <span class="material-symbols-outlined" style="font-size: 20px;">person_add</span>
+                <form id="addUserForm" style="background: #f8fafc; padding: 1.1rem; border-radius: 12px; margin-bottom: 1.25rem; border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 0.65rem; color: #2563eb; display: flex; align-items: center; gap: 6px;">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">person_add</span>
                         <span>Tambah Operator Baru</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
                         <div>
                             <label class="form-label">Nama Lengkap</label>
                             <input type="text" name="name" class="form-control" placeholder="Contoh: Budi Santoso" required>
@@ -347,7 +348,7 @@ $user = getCurrentUser();
                             <input type="text" name="username" class="form-control" placeholder="Contoh: budi" required>
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                         <div>
                             <label class="form-label">Password</label>
                             <input type="password" name="password" class="form-control" placeholder="Password akun" required>
@@ -367,22 +368,22 @@ $user = getCurrentUser();
                 </form>
 
                 <!-- Users List -->
-                <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
-                    <span class="material-symbols-outlined" style="font-size: 18px; color: #94a3b8;">group</span>
+                <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 6px;">
+                    <span class="material-symbols-outlined" style="font-size: 18px; color: #64748b;">group</span>
                     <span>Daftar Pengguna Saat Ini</span>
                 </div>
                 <div class="table-wrapper">
                     <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
                         <thead>
-                            <tr style="background: rgba(0,0,0,0.3); color: #94a3b8;">
-                                <th style="padding:10px 14px;">Nama</th>
-                                <th style="padding:10px 14px;">Username</th>
-                                <th style="padding:10px 14px;">Role</th>
-                                <th style="padding:10px 14px; text-align:right;">Aksi</th>
+                            <tr style="background: #f8fafc; color: #475569;">
+                                <th style="padding:8px 12px;">Nama</th>
+                                <th style="padding:8px 12px;">Username</th>
+                                <th style="padding:8px 12px;">Role</th>
+                                <th style="padding:8px 12px; text-align:right;">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="usersListTable">
-                            <tr><td colspan="4" style="text-align:center; padding:1rem; color:#64748b;">Memuat pengguna...</td></tr>
+                            <tr><td colspan="4" style="text-align:center; padding:1rem; color:#94a3b8;">Memuat pengguna...</td></tr>
                         </tbody>
                     </table>
                 </div>

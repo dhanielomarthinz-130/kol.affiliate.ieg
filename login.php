@@ -38,16 +38,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="login-card">
         <div style="text-align: center; margin-bottom: 2rem;">
-            <div class="sidebar-brand-icon" style="width: 58px; height: 58px; margin: 0 auto 16px; border-radius: 16px;">
-                <span class="material-symbols-outlined" style="font-size: 32px;">inventory_2</span>
+            <div class="sidebar-brand-icon" style="width: 54px; height: 54px; margin: 0 auto 14px; border-radius: 14px;">
+                <span class="material-symbols-outlined" style="font-size: 30px;">inventory_2</span>
             </div>
-            <h1 style="font-size: 1.5rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">KOL PACKING STATION</h1>
-            <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 6px;">Perekaman & Kompresi Otomatis Video Hasil Packaging</p>
+            <h1 style="font-size: 1.45rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">KOL PACKING STATION</h1>
+            <p style="color: #64748b; font-size: 0.82rem; margin-top: 4px;">Perekaman & Kompresi Otomatis Video Hasil Packaging</p>
         </div>
 
         <?php if (!empty($error)): ?>
-            <div style="background: rgba(244, 63, 94, 0.15); border: 1px solid #f43f5e; color: #fca5a5; padding: 12px 14px; border-radius: 10px; margin-bottom: 1.25rem; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
-                <span class="material-symbols-outlined" style="font-size: 20px; color: #f43f5e;">error</span>
+            <div style="background: #fff1f2; border: 1px solid #fecdd3; color: #be123c; padding: 10px 14px; border-radius: 8px; margin-bottom: 1.25rem; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+                <span class="material-symbols-outlined" style="font-size: 18px; color: #e11d48;">error</span>
                 <span><?= htmlspecialchars($error) ?></span>
             </div>
         <?php endif; ?>
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form method="POST" action="login.php">
             <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
-                    <span class="material-symbols-outlined" style="font-size: 16px; color: #60a5fa;">person</span>
+                    <span class="material-symbols-outlined" style="font-size: 16px; color: #2563eb;">person</span>
                     <span>Username</span>
                 </label>
                 <input type="text" name="username" id="inputUsername" class="form-control" placeholder="Masukkan username" required autofocus>
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
 
         <div class="demo-accounts">
-            <div style="font-weight: 700; margin-bottom: 6px; color: #cbd5e1; display: flex; align-items: center; gap: 6px;">
+            <div style="font-weight: 700; margin-bottom: 6px; color: #475569; display: flex; align-items: center; gap: 6px;">
                 <span class="material-symbols-outlined" style="font-size: 16px; color: #f59e0b;">bolt</span>
                 <span>Akun Cepat (Klik untuk isi otomatis):</span>
             </div>

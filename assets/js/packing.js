@@ -323,31 +323,32 @@ class PackingStation {
 
             // Start timer counter
             let sec = 0;
-            this.timerDisplay.textContent = '00:00:00';
+            this.timerDisplay.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px; color:#cbd5e1;">timer</span> <span>00:00:00</span>`;
             this.timerInterval = setInterval(() => {
                 sec++;
                 const hrs = Math.floor(sec / 3600);
                 const mins = Math.floor((sec % 3600) / 60);
                 const secs = sec % 60;
-                this.timerDisplay.textContent = 
+                const formatted = 
                     String(hrs).padStart(2, '0') + ':' +
                     String(mins).padStart(2, '0') + ':' +
                     String(secs).padStart(2, '0');
+                this.timerDisplay.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px; color:#cbd5e1;">timer</span> <span>${formatted}</span>`;
             }, 1000);
         } else {
             this.scannerBanner.classList.remove('recording-mode');
             this.statusBadge.className = 'status-indicator status-standby';
-            this.statusBadge.innerHTML = `<span class="rec-dot" style="background:#10b981;"></span> STANDBY (SIAP SCAN)`;
+            this.statusBadge.innerHTML = `<span class="rec-dot" style="background:#ffffff;"></span> STANDBY (SIAP SCAN)`;
             this.overlayResi.style.display = 'none';
             this.overlayResi.textContent = '';
             this.manualStopBtn.style.display = 'none';
             this.cancelRecordBtn.style.display = 'none';
 
-            document.getElementById('scannerPromptText').textContent = 'Scan No Resi / Barcode Invoice untuk Mulai:';
+            document.getElementById('scannerPromptText').textContent = 'Scan No Resi untuk Mulai Rekam:';
             this.resiInput.placeholder = 'Arahkan Barcode Scanner atau Ketik No Resi disini...';
 
             clearInterval(this.timerInterval);
-            this.timerDisplay.textContent = '00:00:00';
+            this.timerDisplay.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px; color:#cbd5e1;">timer</span> <span>00:00:00</span>`;
         }
     }
 
