@@ -18,6 +18,7 @@ function getDB() {
     // Detect if running on InfinityFree or remote server by checking hostname / environment
     $isInfinityFree = (
         isset($_SERVER['HTTP_HOST']) && (
+            strpos($_SERVER['HTTP_HOST'], 'great-site.net') !== false ||
             strpos($_SERVER['HTTP_HOST'], 'xo.je') !== false ||
             strpos($_SERVER['HTTP_HOST'], 'rf.gd') !== false ||
             strpos($_SERVER['HTTP_HOST'], 'infinityfree') !== false ||

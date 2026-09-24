@@ -46,7 +46,7 @@ Sistem menyediakan 2 Role sesuai permintaan:
 - **Local Development**:
   - `http://localhost/kol.ieg/`
 - **Live Production (InfinityFree)**:
-  - `http://iegkolaffiliate.xo.je/` (Auto-deployed via GitHub Actions)
+  - `http://iegkolaffiliate.great-site.net/` (Auto-deployed via GitHub Actions)
 
 > **Catatan Izin Kamera**:
 > Saat pertama kali membuka halaman packing, browser akan meminta izin akses kamera (**Allow Camera**). Pastikan klik **Izinkan / Allow** agar feed kamera dan rekaman dapat berjalan optimal.
