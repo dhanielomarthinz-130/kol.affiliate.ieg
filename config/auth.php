@@ -1,0 +1,74 @@
+<?php
+// config/auth.php
+require_once __DIR__ . '/database.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+function isLoggedIn() {
+    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+}
+
+function getCurrentUser() {
+    if (!isLoggedIn()) {
+        return null;
+    }
+    return [
+        'id' => $_SESSION['user_id'],
+        'username' => $_SESSION['username'],
+        'name' => $_SESSION['name'],
+        'role' => $_SESSION['role']
+    ];
+}
+
+function requireLogin() {
+    if (!isLoggedIn()) {
+        header('Location: login.php');
+        exit;
+    }
+}
+
+function requireRole($role) {
+    requireLogin();
+    if ($_SESSION['role'] !== $role) {
+        if ($_SESSION['role'] === 'operator') {
+            header('Location: packing.php');
+            exit;
+        } else {
+            header('Location: admin.php');
+            exit;
+        }
+    }
+}
+
+function loginUser($username, $password) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM users WHERE username = ? AND is_active = 1 LIMIT 1");
+    $stmt->execute([$username]);
+    $user = $stmt->fetch();
+
+    if ($user && password_verify($password, $user['password'])) {
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['name'] = $user['name'];
+        $_SESSION['role'] = $user['role'];
+        return true;
+    }
+    return false;
+}
+
+function logoutUser() {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $_SESSION = [];
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+    session_destroy();
+}

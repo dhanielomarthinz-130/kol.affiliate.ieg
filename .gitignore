@@ -1,0 +1,8 @@
+# .gitignore
+bin/
+uploads/videos/*
+!uploads/videos/.gitkeep
+database/*.sqlite
+*.log
+.DS_Store
+Thumbs.db

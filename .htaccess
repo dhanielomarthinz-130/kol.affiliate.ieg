@@ -1,0 +1,13 @@
+# .htaccess
+php_value upload_max_filesize 100M
+php_value post_max_size 100M
+php_value max_execution_time 300
+php_value max_input_time 300
+
+# Enable correct MIME types for video streaming
+AddType video/webm .webm
+AddType video/mp4 .mp4
+AddType video/ogg .ogv
+
+# Prevent directory indexing
+Options -Indexes
