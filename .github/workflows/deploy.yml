@@ -1,0 +1,31 @@
+name: Deploy to InfinityFree on Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ftp-deploy:
+    name: 🚀 Auto Deploy to InfinityFree
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚚 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📂 Sync to InfinityFree FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: iegkolaffiliate.xo.je/htdocs/
+          protocol: ftp
+          port: 21
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/bin/**
+            **/*.sqlite
+            **/uploads/videos/*
+            !**/uploads/videos/.gitkeep

@@ -273,9 +273,13 @@ class PackingStation {
             options = { mimeType: 'video/webm' };
         }
 
-        // Set 850 kbps video + 64 kbps audio for sharp text/labels without bloated file size
-        options.videoBitsPerSecond = 850000;
-        options.audioBitsPerSecond = 64000;
+        // Check quality mode (Saver ~400KB vs HD ~1.4MB)
+        const qualitySelect = document.getElementById('qualitySelect');
+        const isSaver = qualitySelect ? qualitySelect.value === 'saver' : true;
+
+        // Set bitrate accordingly (Saver: 420kbps video / 32kbps audio for ~400KB per video)
+        options.videoBitsPerSecond = isSaver ? 420000 : 850000;
+        options.audioBitsPerSecond = isSaver ? 32000 : 64000;
 
         try {
             this.mediaRecorder = new MediaRecorder(this.stream, options);
@@ -393,12 +397,16 @@ class PackingStation {
         this.updateUIRecordingState(false);
 
         // Upload to server
+        const qualitySelect = document.getElementById('qualitySelect');
+        const qualityMode = qualitySelect ? qualitySelect.value : 'saver';
+
         const formData = new FormData();
         formData.append('resi_no', resiToSave);
         formData.append('video', videoBlob, `${resiToSave}.webm`);
         formData.append('start_time', formattedStartTime);
         formData.append('end_time', formattedEndTime);
         formData.append('duration_seconds', durationSec);
+        formData.append('quality_mode', qualityMode);
 
         this.resiInput.value = '';
         this.focusInput();

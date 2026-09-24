@@ -163,6 +163,11 @@ $user = getCurrentUser();
                             <select id="cameraSelect" class="select-input">
                                 <option value="">Memuat perangkat kamera...</option>
                             </select>
+
+                            <select id="qualitySelect" class="select-input" title="Pilih Mode Penyimpanan" style="font-weight: 600; color: #2563eb; background: #eff6ff; border-color: #bfdbfe;">
+                                <option value="saver" selected>⚡ Mode Hemat (~400 KB)</option>
+                                <option value="hd">🎥 Mode HD (~1.4 MB)</option>
+                            </select>
                         </div>
                     </div>
 

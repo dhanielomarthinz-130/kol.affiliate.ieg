@@ -73,14 +73,20 @@ $isCompressed = false;
 $finalFileSize = $rawFileSize;
 
 if (function_exists('exec')) {
+    $qualityMode = trim($_POST['quality_mode'] ?? 'saver');
+    $crf = ($qualityMode === 'saver') ? '28' : '25';
+    $audioBitrate = ($qualityMode === 'saver') ? '32k' : '64k';
+
     // Highly optimized H.264 + AAC compression
-    // -crf 26: sweet spot for crisp text & barcode readability while keeping file size small (~70% reduction)
+    // -crf 28 in saver mode yields ~350-500 KB per video while keeping label text readable
     // -preset fast: quick encoding so operator is not kept waiting
     // -movflags +faststart: allows instant playback in browser while streaming
     $cmd = sprintf(
-        '"%s" -y -i %s -vcodec libx264 -crf 26 -preset fast -pix_fmt yuv420p -acodec aac -b:a 64k -movflags +faststart %s 2>&1',
+        '"%s" -y -i %s -vcodec libx264 -crf %s -preset fast -pix_fmt yuv420p -acodec aac -b:a %s -movflags +faststart %s 2>&1',
         $ffmpegBin,
         escapeshellarg($tempUploadedPath),
+        $crf,
+        $audioBitrate,
         escapeshellarg($finalFilePath)
     );
 

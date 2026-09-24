@@ -18,12 +18,14 @@ function getDB() {
     // Detect if running on InfinityFree or remote server by checking hostname / environment
     $isInfinityFree = (
         isset($_SERVER['HTTP_HOST']) && (
+            strpos($_SERVER['HTTP_HOST'], 'xo.je') !== false ||
             strpos($_SERVER['HTTP_HOST'], 'rf.gd') !== false ||
             strpos($_SERVER['HTTP_HOST'], 'infinityfree') !== false ||
             strpos($_SERVER['HTTP_HOST'], '42web.io') !== false ||
             strpos($_SERVER['HTTP_HOST'], 'epizy.com') !== false ||
             strpos($_SERVER['HTTP_HOST'], 'page.gd') !== false ||
-            strpos($_SERVER['HTTP_HOST'], 'infy.uk') !== false
+            strpos($_SERVER['HTTP_HOST'], 'infy.uk') !== false ||
+            (!in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1']) && strpos($_SERVER['HTTP_HOST'], 'localhost:') === false)
         )
     );
 
