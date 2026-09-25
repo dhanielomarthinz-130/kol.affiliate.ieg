@@ -71,9 +71,16 @@ foreach ($rows as &$row) {
     $row['formatted_date'] = date('d/m/Y H:i:s', strtotime($row['created_at']));
 }
 
+// Calculate total packings today
+$todayDate = date('Y-m-d');
+$stmtToday = $db->prepare("SELECT COUNT(*) as cnt FROM packings WHERE DATE(created_at) = ?");
+$stmtToday->execute([$todayDate]);
+$todayTotal = intval($stmtToday->fetch()['cnt'] ?? 0);
+
 echo json_encode([
     'success' => true,
     'total' => $totalRows,
+    'today_total' => $todayTotal,
     'page' => $page,
     'limit' => $limit,
     'total_pages' => ceil($totalRows / $limit),

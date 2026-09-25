@@ -450,8 +450,14 @@ class PackingStation {
         try {
             const res = await fetch('api/get_packings.php?limit=10');
             const data = await res.json();
-            if (data.success && data.data) {
-                this.renderHistory(data.data);
+            if (data.success) {
+                if (data.today_total !== undefined) {
+                    const todayEl = document.getElementById('todayTotalCount');
+                    if (todayEl) todayEl.textContent = data.today_total;
+                }
+                if (data.data) {
+                    this.renderHistory(data.data);
+                }
             }
         } catch (e) {
             console.warn('Could not load history', e);
