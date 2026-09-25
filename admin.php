@@ -683,7 +683,10 @@ $todayDate = date('Y-m-d');
                         <label class="form-label" style="font-weight: 600;">
                             <span>ID Folder Google Drive (Opsional)</span>
                         </label>
-                        <input type="text" id="cfgFolderId" name="folder_id" class="form-control" placeholder="Contoh: 1AbCdEfGhIjKlMnOpQrStUvWxYz..." autocomplete="off">
+                        <input type="text" id="cfgFolderId" name="folder_id" class="form-control" placeholder="Contoh: 1ArUc5cSTO-decvyF0auMmTFuF3v_fon7 atau link folder" autocomplete="off">
+                        <div style="font-size: 0.73rem; color: #64748b; margin-top: 4px;">
+                            Bisa paste link folder lengkap (<code>https://drive.google.com/drive/folders/...</code>) atau langsung ID foldernya saja.
+                        </div>
                     </div>
 
                     <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 14px;">

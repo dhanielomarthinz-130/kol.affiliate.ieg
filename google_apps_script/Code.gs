@@ -19,12 +19,21 @@
  * 10. Masukkan URL tersebut ke menu Pengaturan Google Sync di Portal Admin KOL Packing!
  */
 
-// Masukkan ID Folder Google Drive target di sini (bisa juga dikirim dinamis dari aplikasi)
-// Contoh link folder: https://drive.google.com/drive/folders/1ABCxyz123... -> ID-nya adalah: 1ABCxyz123...
-var DEFAULT_FOLDER_ID = "";
+// Masukkan ID Folder Google Drive target di sini
+var DEFAULT_FOLDER_ID = "1ArUc5cSTO-decvyF0auMmTFuF3v_fon7";
 
 // Nama Tab Sheet tempat data disimpan
 var SHEET_NAME = "Data Packing";
+
+function extractFolderId(idOrUrl) {
+  if (!idOrUrl) return "";
+  idOrUrl = String(idOrUrl).trim();
+  var match = idOrUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return match[1];
+  }
+  return idOrUrl;
+}
 
 function doGet(e) {
   return ContentService.createTextOutput(JSON.stringify({
@@ -44,12 +53,13 @@ function doPost(e) {
 
     var data = JSON.parse(e.postData.contents);
 
-    // 1. Tentukan Folder Google Drive
-    var folderId = (data.folder_id && data.folder_id.trim() !== "") ? data.folder_id.trim() : DEFAULT_FOLDER_ID;
+    // 1. Tentukan Folder Google Drive (bisa kirim ID murni atau full link URL)
+    var rawFolderId = (data.folder_id && String(data.folder_id).trim() !== "") ? String(data.folder_id).trim() : DEFAULT_FOLDER_ID;
+    var folderId = extractFolderId(rawFolderId);
     var targetFolder;
-    if (folderId && folderId.trim() !== "") {
+    if (folderId && folderId !== "") {
       try {
-        targetFolder = DriveApp.getFolderById(folderId.trim());
+        targetFolder = DriveApp.getFolderById(folderId);
       } catch (fErr) {
         targetFolder = DriveApp.getRootFolder();
       }

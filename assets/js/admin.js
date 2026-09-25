@@ -256,6 +256,13 @@ function setupEventListeners() {
             const btn = document.getElementById('btnSaveGoogleSync');
             if (btn) btn.disabled = true;
             try {
+                const folderInput = document.getElementById('cfgFolderId');
+                if (folderInput && folderInput.value) {
+                    const match = folderInput.value.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+                    if (match && match[1]) {
+                        folderInput.value = match[1];
+                    }
+                }
                 const formData = new FormData(syncForm);
                 formData.set('auto_sync', document.getElementById('cfgAutoSync')?.checked ? '1' : '0');
                 const res = await fetch('api/sync_google.php?action=save_config', {

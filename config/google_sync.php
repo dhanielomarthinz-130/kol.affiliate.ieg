@@ -24,11 +24,23 @@ function getGoogleSyncConfig(): array {
     return array_merge($defaults, $json);
 }
 
+function extractDriveFolderId(string $input): string {
+    $input = trim($input);
+    if (empty($input)) return '';
+    if (preg_match('#/folders/([a-zA-Z0-9_-]+)#', $input, $matches)) {
+        return $matches[1];
+    }
+    return $input;
+}
+
 function saveGoogleSyncConfig(array $newConfig): bool {
     $current = getGoogleSyncConfig();
+    $rawFolder = trim($newConfig['folder_id'] ?? $current['folder_id']);
+    $cleanFolder = extractDriveFolderId($rawFolder);
+
     $updated = [
         'gas_webapp_url' => trim($newConfig['gas_webapp_url'] ?? $current['gas_webapp_url']),
-        'folder_id'      => trim($newConfig['folder_id'] ?? $current['folder_id']),
+        'folder_id'      => $cleanFolder,
         'auto_sync'      => (bool)($newConfig['auto_sync'] ?? $current['auto_sync'])
     ];
 
@@ -131,6 +143,8 @@ function sendPackingToGoogle(int $packingId): array {
     curl_setopt($ch, CURLOPT_AUTOREFERER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 180); // 3 menit untuk upload video
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
+    curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+    curl_setopt($ch, CURLOPT_DNS_CACHE_TIMEOUT, 300);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
         'Accept: application/json'
@@ -147,6 +161,13 @@ function sendPackingToGoogle(int $packingId): array {
         return [
             'success' => false,
             'message' => 'Gagal terhubung ke Google Apps Script: ' . $curlErr
+        ];
+    }
+
+    if ($httpCode === 401 || strpos($rawResponse, 'accounts.google.com') !== false) {
+        return [
+            'success' => false,
+            'message' => 'Akses Ditolak (HTTP 401): Pengaturan "Who has access" di Google Apps Script belum diubah ke "Anyone" (Siapa saja). Silakan Deploy ulang Web App dan pilih "Anyone".'
         ];
     }
 

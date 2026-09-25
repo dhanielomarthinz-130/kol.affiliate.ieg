@@ -123,7 +123,9 @@ if ($action === 'test_connection') {
     curl_setopt($ch, CURLOPT_URL, $gasUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+    curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+    curl_setopt($ch, CURLOPT_DNS_CACHE_TIMEOUT, 300);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
@@ -137,11 +139,19 @@ if ($action === 'test_connection') {
         exit;
     }
 
+    if ($code === 401 || strpos($raw, 'accounts.google.com') !== false || strpos($raw, 'Sign in - Google Accounts') !== false) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Akses Ditolak (HTTP 401). Pada Google Apps Script, pengaturan "Who has access" (Siapa yang memiliki akses) belum diatur ke "Anyone" (Siapa saja). Silakan Deploy ulang Web App dan ubah ke "Anyone".'
+        ]);
+        exit;
+    }
+
     $data = json_decode($raw, true);
     if (isset($data['success']) && $data['success']) {
         echo json_encode(['success' => true, 'message' => 'Terhubung! Webhook Google Apps Script siap digunakan.']);
-    } elseif (strpos($raw, 'google') !== false || $code === 200) {
-        echo json_encode(['success' => true, 'message' => 'Terhubung ke Google Web App (HTTP ' . $code . ').']);
+    } elseif ($code === 200) {
+        echo json_encode(['success' => true, 'message' => 'Terhubung ke Google Web App (HTTP 200 OK).']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Webhook merespon kode HTTP ' . $code . ': ' . substr($raw, 0, 150)]);
     }
