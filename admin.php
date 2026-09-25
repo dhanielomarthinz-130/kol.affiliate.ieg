@@ -2,10 +2,12 @@
 // admin.php
 require_once __DIR__ . '/config/auth.php';
 requireRole('admin');
+require_once __DIR__ . '/config/google_sync.php';
 
 $user = getCurrentUser();
 $isSuperAdmin = isSuperAdmin();
 $todayDate = date('Y-m-d');
+$googleSyncCfg = getGoogleSyncConfig();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -673,7 +675,7 @@ $todayDate = date('Y-m-d');
                             <span>URL Web App Google Apps Script (Webhook)</span>
                             <span style="color: #ef4444;">*</span>
                         </label>
-                        <input type="url" id="cfgGasUrl" name="gas_webapp_url" class="form-control" placeholder="https://script.google.com/macros/s/AKfycb.../exec" required autocomplete="off">
+                        <input type="url" id="cfgGasUrl" name="gas_webapp_url" class="form-control" value="<?= htmlspecialchars($googleSyncCfg['gas_webapp_url'] ?? '') ?>" placeholder="https://script.google.com/macros/s/AKfycb.../exec" required autocomplete="off">
                         <div style="font-size: 0.73rem; color: #64748b; margin-top: 4px;">
                             Pastikan pengaturan <b>Who has access</b> di Google Apps Script diset ke <b>Anyone (Siapa saja)</b>.
                         </div>
@@ -683,7 +685,7 @@ $todayDate = date('Y-m-d');
                         <label class="form-label" style="font-weight: 600;">
                             <span>ID Folder Google Drive (Opsional)</span>
                         </label>
-                        <input type="text" id="cfgFolderId" name="folder_id" class="form-control" placeholder="Contoh: 1ArUc5cSTO-decvyF0auMmTFuF3v_fon7 atau link folder" autocomplete="off">
+                        <input type="text" id="cfgFolderId" name="folder_id" class="form-control" value="<?= htmlspecialchars($googleSyncCfg['folder_id'] ?? '') ?>" placeholder="Contoh: 1ArUc5cSTO-decvyF0auMmTFuF3v_fon7 atau link folder" autocomplete="off">
                         <div style="font-size: 0.73rem; color: #64748b; margin-top: 4px;">
                             Bisa paste link folder lengkap (<code>https://drive.google.com/drive/folders/...</code>) atau langsung ID foldernya saja.
                         </div>
@@ -691,7 +693,7 @@ $todayDate = date('Y-m-d');
 
                     <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;">
-                            <input type="checkbox" id="cfgAutoSync" name="auto_sync" style="width: 18px; height: 18px; cursor: pointer; accent-color: #2563eb;">
+                            <input type="checkbox" id="cfgAutoSync" name="auto_sync" <?= !empty($googleSyncCfg['auto_sync']) ? 'checked' : '' ?> style="width: 18px; height: 18px; cursor: pointer; accent-color: #2563eb;">
                             <div>
                                 <div style="font-weight: 700; font-size: 0.88rem; color: #0f172a;">Auto-Sync Otomatis Setiap Scan Selesai</div>
                                 <div style="font-size: 0.75rem; color: #64748b;">Kirim otomatis data &amp; video ke Google Drive/Sheet di background setelah operator scan paket.</div>

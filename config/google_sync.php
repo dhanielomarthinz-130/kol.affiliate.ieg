@@ -47,9 +47,14 @@ function saveGoogleSyncConfig(array $newConfig): bool {
     return (bool)file_put_contents(GOOGLE_SYNC_CONFIG_FILE, json_encode($updated, JSON_PRETTY_PRINT));
 }
 
-/**
- * Kirim rekaman packing ke Google Drive dan Google Sheets via Apps Script Web App
- */
+function applyCurlDnsOptions($ch): void {
+    curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+    curl_setopt($ch, CURLOPT_DNS_CACHE_TIMEOUT, 600);
+    if (defined('CURLOPT_DOH_URL')) {
+        curl_setopt($ch, CURLOPT_DOH_URL, 'https://1.1.1.1/dns-query');
+    }
+}
+
 function sendPackingToGoogle(int $packingId): array {
     $config = getGoogleSyncConfig();
     $webAppUrl = trim($config['gas_webapp_url'] ?? '');
@@ -143,8 +148,7 @@ function sendPackingToGoogle(int $packingId): array {
     curl_setopt($ch, CURLOPT_AUTOREFERER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 180); // 3 menit untuk upload video
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
-    curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-    curl_setopt($ch, CURLOPT_DNS_CACHE_TIMEOUT, 300);
+    applyCurlDnsOptions($ch);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
         'Accept: application/json'
