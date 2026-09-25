@@ -40,10 +40,13 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
             <!-- Left: Brand Identity -->
             <div class="brand-area">
                 <div class="brand-badge">
-                    <span class="material-symbols-outlined" style="font-size: 22px;">inventory_2</span>
+                    <span class="material-symbols-outlined" style="font-size: 20px;">inventory_2</span>
                 </div>
                 <div>
-                    <div class="brand-title">KOL PACKING</div>
+                    <div class="brand-title">
+                        <span>KOL PACKING</span>
+                        <span class="brand-dot" title="Sistem Aktif & Terhubung"></span>
+                    </div>
                     <div class="brand-sub">Auto Video Recorder & Audit</div>
                 </div>
             </div>
@@ -52,29 +55,30 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
             <div class="scanner-box">
                 <div class="scanner-field-wrapper">
                     <div class="scanner-icon">
-                        <span class="material-symbols-outlined" style="font-size: 20px;">qr_code_scanner</span>
+                        <span class="material-symbols-outlined" style="font-size: 19px;">qr_code_scanner</span>
                     </div>
                     <input type="text" 
                            id="resiInput" 
                            class="scanner-input" 
-                           placeholder="Arahkan Barcode Scanner atau Ketik No Resi disini..." 
+                           placeholder="Arahkan Barcode Scanner atau Ketik No Resi..." 
                            autocomplete="off" 
                            autofocus>
+                    <span id="scannerPromptText" style="display: none;"></span>
                 </div>
 
-                <button type="button" id="manualStopBtn" class="btn btn-success" style="display: none; padding: 0.55rem 1rem;">
+                <button type="button" id="manualStopBtn" class="btn btn-success" style="display: none; padding: 0.45rem 0.85rem;">
                     <span class="material-symbols-outlined" style="font-size: 17px;">stop_circle</span>
                     <span>Selesai Packing</span>
                 </button>
 
-                <button type="button" id="cancelRecordBtn" class="btn btn-danger" style="display: none; padding: 0.55rem 0.9rem;">
+                <button type="button" id="cancelRecordBtn" class="btn btn-danger" style="display: none; padding: 0.45rem 0.75rem;">
                     <span class="material-symbols-outlined" style="font-size: 17px;">cancel</span>
                     <span>Batal</span>
                 </button>
 
                 <span class="autofocus-chip">
-                    <span class="material-symbols-outlined" style="font-size: 14px; color: #2563eb;">center_focus_strong</span>
-                    <span>Auto-Focus</span>
+                    <span class="material-symbols-outlined" style="font-size: 13px; color: #2563eb;">center_focus_strong</span>
+                    <span>Scanner Aktif</span>
                 </span>
             </div>
 

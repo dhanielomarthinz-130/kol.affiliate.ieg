@@ -195,37 +195,37 @@ function renderTable(rows, total, page, totalPages) {
 
     tableBody.innerHTML = rows.map((row, idx) => `
         <tr>
-            <td style="color:#64748b; font-size:0.8rem;">${startIdx + idx}</td>
+            <td style="color:#64748b; font-size:0.8rem; font-weight:500;">${startIdx + idx}</td>
             <td>
                 <span class="resi-badge">${escapeHtml(row.resi_no)}</span>
             </td>
             <td>
-                <div style="font-weight:600; color:#f1f5f9;">${escapeHtml(row.operator_name)}</div>
+                <div style="font-weight:600; color:#0f172a;">${escapeHtml(row.operator_name)}</div>
             </td>
-            <td style="font-family:'JetBrains Mono', monospace; font-size:0.85rem;">
+            <td style="font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:#334155;">
                 <span style="display:inline-flex; align-items:center; gap:4px;">
-                    <span class="material-symbols-outlined" style="font-size:16px; color:#94a3b8;">timer</span>
+                    <span class="material-symbols-outlined" style="font-size:15px; color:#2563eb;">timer</span>
                     <span>${row.formatted_duration}</span>
                 </span>
             </td>
-            <td style="font-size:0.85rem; color:#94a3b8;">
+            <td style="font-size:0.82rem; color:#475569;">
                 ${row.formatted_date}
             </td>
-            <td style="font-size:0.85rem; color:#94a3b8;">
+            <td style="font-size:0.82rem; color:#64748b; font-family:'JetBrains Mono', monospace;">
                 ${row.formatted_size}
             </td>
             <td>
                 <div style="display:flex; gap:6px;">
                     <button class="btn btn-primary btn-sm" onclick="openAdminVideoModal('${row.video_url}', '${escapeHtml(row.resi_no)}', '${escapeHtml(row.operator_name)}', '${row.formatted_duration}', '${row.formatted_date}', ${row.id})">
-                        <span class="material-symbols-outlined">play_circle</span>
+                        <span class="material-symbols-outlined" style="font-size:16px;">play_circle</span>
                         <span>Putar</span>
                     </button>
                     <a href="download.php?id=${row.id}" class="btn btn-outline btn-sm" title="Download Video (MP4)" download>
-                        <span class="material-symbols-outlined">download</span>
+                        <span class="material-symbols-outlined" style="font-size:16px;">download</span>
                         <span>MP4</span>
                     </a>
                     <button class="btn btn-danger btn-sm" onclick="deletePackingRecord(${row.id}, '${escapeHtml(row.resi_no)}')" title="Hapus Data">
-                        <span class="material-symbols-outlined">delete</span>
+                        <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
                     </button>
                 </div>
             </td>
@@ -237,7 +237,7 @@ function renderTable(rows, total, page, totalPages) {
         let pagHtml = '';
         if (totalPages > 1) {
             pagHtml += `<button class="btn btn-outline btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="loadPackings(${page - 1})"><span class="material-symbols-outlined" style="font-size:16px;">chevron_left</span> Sebelumnya</button>`;
-            pagHtml += `<span style="font-size:0.85rem; color:#94a3b8; align-self:center; margin: 0 8px;">Hal ${page} dari ${totalPages}</span>`;
+            pagHtml += `<span style="font-size:0.82rem; color:#64748b; font-weight:600; align-self:center; margin: 0 10px;">Hal ${page} dari ${totalPages}</span>`;
             pagHtml += `<button class="btn btn-outline btn-sm" ${page >= totalPages ? 'disabled' : ''} onclick="loadPackings(${page + 1})">Berikutnya <span class="material-symbols-outlined" style="font-size:16px;">chevron_right</span></button>`;
         }
         paginationEl.innerHTML = pagHtml;
@@ -258,11 +258,11 @@ function openAdminVideoModal(videoUrl, resi, operator, duration, date, id) {
         const normalBtn = document.querySelector('.speed-btn[data-speed="1"]');
         if (normalBtn) normalBtn.classList.add('active');
 
-        if (title) title.textContent = 'HASIL PACKING: ' + resi;
-        if (meta) meta.innerHTML = `Operator: <b>${operator}</b> | Durasi: <b>${duration}</b> | Waktu: <b>${date}</b>`;
+        if (title) title.innerHTML = `<span class="material-symbols-outlined" style="color:#2563eb; font-size:22px;">videocam</span> HASIL REKAMAN: <span style="font-family:'JetBrains Mono', monospace; color:#2563eb;">${escapeHtml(resi)}</span>`;
+        if (meta) meta.innerHTML = `Operator: <b>${escapeHtml(operator)}</b> &nbsp;•&nbsp; Durasi: <b>${escapeHtml(duration)}</b> &nbsp;•&nbsp; Tanggal: <b>${escapeHtml(date)} WIB</b>`;
         if (dlBtn) {
             dlBtn.href = id ? ('download.php?id=' + id) : videoUrl;
-            dlBtn.innerHTML = '💾 Download Video MP4';
+            dlBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">download</span> <span>Download MP4</span>';
         }
 
         modal.classList.add('active');
@@ -330,14 +330,17 @@ async function loadUsersList() {
         const data = await res.json();
         if (data.success) {
             container.innerHTML = data.data.map(u => `
-                <tr style="border-bottom:1px solid #1f2937;">
-                    <td style="padding:10px 12px; font-weight:600;">${escapeHtml(u.name)}</td>
-                    <td style="padding:10px 12px; font-family:'JetBrains Mono', monospace; color:#94a3b8;">${escapeHtml(u.username)}</td>
+                <tr style="border-bottom:1px solid var(--border-color);">
+                    <td style="padding:10px 12px; font-weight:600; color:#0f172a;">${escapeHtml(u.name)}</td>
+                    <td style="padding:10px 12px; font-family:'JetBrains Mono', monospace; font-size:0.82rem; color:#64748b;">${escapeHtml(u.username)}</td>
                     <td style="padding:10px 12px;">
-                        <span class="user-role-tag ${u.role === 'admin' ? 'role-admin' : 'role-operator'}">${u.role}</span>
+                        <span class="user-role-tag ${u.role === 'admin' ? 'role-admin' : 'role-operator'}">${u.role.toUpperCase()}</span>
                     </td>
                     <td style="padding:10px 12px; text-align:right;">
-                        <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${escapeHtml(u.name)}')">Hapus</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${escapeHtml(u.name)}')">
+                            <span class="material-symbols-outlined" style="font-size:15px;">delete</span>
+                            <span>Hapus</span>
+                        </button>
                     </td>
                 </tr>
             `).join('');

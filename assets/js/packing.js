@@ -322,7 +322,10 @@ class PackingStation {
             this.cancelRecordBtn.style.display = 'inline-flex';
 
             // Scanner prompt update
-            document.getElementById('scannerPromptText').textContent = `Sedang Merekam [${this.currentResi}] - Scan Resi Yang Sama Untuk Selesai:`;
+            const promptEl = document.getElementById('scannerPromptText');
+            if (promptEl) {
+                promptEl.textContent = `Sedang Merekam [${this.currentResi}] - Scan Resi Yang Sama Untuk Selesai:`;
+            }
             this.resiInput.placeholder = `Scan No Resi [${this.currentResi}] untuk SELESAI`;
 
             // Start timer counter
@@ -342,13 +345,16 @@ class PackingStation {
         } else {
             this.scannerBanner.classList.remove('recording-mode');
             this.statusBadge.className = 'status-indicator status-standby';
-            this.statusBadge.innerHTML = `<span class="rec-dot" style="background:#ffffff;"></span> STANDBY (SIAP SCAN)`;
+            this.statusBadge.innerHTML = `<span class="rec-dot"></span> STANDBY (SIAP SCAN)`;
             this.overlayResi.style.display = 'none';
             this.overlayResi.textContent = '';
             this.manualStopBtn.style.display = 'none';
             this.cancelRecordBtn.style.display = 'none';
 
-            document.getElementById('scannerPromptText').textContent = 'Scan No Resi untuk Mulai Rekam:';
+            const promptEl = document.getElementById('scannerPromptText');
+            if (promptEl) {
+                promptEl.textContent = 'Scan No Resi untuk Mulai Rekam:';
+            }
             this.resiInput.placeholder = 'Arahkan Barcode Scanner atau Ketik No Resi disini...';
 
             clearInterval(this.timerInterval);

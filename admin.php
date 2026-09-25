@@ -15,7 +15,7 @@ $user = getCurrentUser();
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 </head>
 <body>
 
@@ -25,12 +25,12 @@ $user = getCurrentUser();
         <aside class="sidebar">
             <div class="sidebar-header">
                 <a href="admin" class="sidebar-brand">
-                    <div class="sidebar-brand-icon" style="background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);">
+                    <div class="sidebar-brand-icon">
                         <span class="material-symbols-outlined">shield_person</span>
                     </div>
                     <div>
                         <div class="sidebar-brand-title">KOL AUDIT</div>
-                        <div class="sidebar-brand-sub" style="color: #7c3aed;">Admin Portal</div>
+                        <div class="sidebar-brand-sub">Admin Portal</div>
                     </div>
                 </a>
             </div>
@@ -42,7 +42,7 @@ $user = getCurrentUser();
                         <a href="admin" class="nav-link active">
                             <span class="material-symbols-outlined">analytics</span>
                             <span>Data Packaging</span>
-                            <span class="nav-badge" style="background: #f3e8ff; color: #7c3aed;">ALL</span>
+                            <span class="nav-badge" style="background: var(--primary-subtle); color: var(--primary);">ALL</span>
                         </a>
 
                         <a href="packing" class="nav-link">
@@ -68,12 +68,12 @@ $user = getCurrentUser();
                 </div>
 
                 <div style="margin-top: auto;">
-                    <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; font-size: 0.75rem; color: var(--text-muted);">
-                        <div style="display: flex; align-items: center; gap: 5px; color: #059669; font-weight: 700; margin-bottom: 2px;">
+                    <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; font-size: 0.74rem; color: var(--text-muted);">
+                        <div style="display: flex; align-items: center; gap: 5px; color: var(--success); font-weight: 700; margin-bottom: 2px;">
                             <span class="material-symbols-outlined" style="font-size: 15px;">storage</span>
-                            <span>Status Penyimpanan</span>
+                            <span>Status Server</span>
                         </div>
-                        Auto-transcoding MP4 H.264 aktif dengan kompresi hemat ruang.
+                        Auto-transcoding MP4 H.264 kompresi hemat ruang aktif.
                     </div>
                 </div>
             </div>
@@ -81,20 +81,19 @@ $user = getCurrentUser();
             <!-- Sidebar User Profile & Logout -->
             <div class="sidebar-footer">
                 <div class="user-profile-widget">
-                    <div class="user-avatar-circle" style="border-color: #d8b4fe; color: #7e22ce; background: #faf5ff;">
+                    <div class="user-avatar-circle">
                         <span class="material-symbols-outlined">shield_person</span>
                     </div>
                     <div class="user-profile-details">
                         <div class="user-profile-name"><?= htmlspecialchars($user['name']) ?></div>
                         <div class="user-profile-role role-admin">
-                            <span class="material-symbols-outlined" style="font-size: 12px;">verified</span>
-                            <span>ADMINISTRATOR</span>
+                            ADMINISTRATOR
                         </div>
                     </div>
                 </div>
 
                 <a href="logout" class="btn-sidebar-logout">
-                    <span class="material-symbols-outlined" style="font-size: 16px;">logout</span>
+                    <span class="material-symbols-outlined" style="font-size: 15px;">logout</span>
                     <span>Keluar Sistem</span>
                 </a>
             </div>
@@ -106,11 +105,11 @@ $user = getCurrentUser();
             <!-- Page Top Bar -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
                 <div>
-                    <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                        <span class="material-symbols-outlined" style="font-size: 28px; color: #7c3aed;">table_view</span>
+                    <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; letter-spacing: -0.02em;">
+                        <span class="material-symbols-outlined" style="font-size: 26px; color: var(--primary);">table_view</span>
                         <span>Semua Data Hasil Packaging</span>
                     </h1>
-                    <p style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">
+                    <p style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
                         Pusat pemantauan rekaman video, verifikasi nomor resi, dan audit durasi kerja operator packing.
                     </p>
                 </div>
@@ -131,7 +130,7 @@ $user = getCurrentUser();
             <!-- Summary KPI Cards -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: #eff6ff; color: #2563eb;">
+                    <div class="stat-icon primary">
                         <span class="material-symbols-outlined">inventory_2</span>
                     </div>
                     <div>
@@ -141,7 +140,7 @@ $user = getCurrentUser();
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: #ecfdf5; color: #059669;">
+                    <div class="stat-icon success">
                         <span class="material-symbols-outlined">timer</span>
                     </div>
                     <div>
@@ -151,7 +150,7 @@ $user = getCurrentUser();
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: #faf5ff; color: #7c3aed;">
+                    <div class="stat-icon purple">
                         <span class="material-symbols-outlined">monitoring</span>
                     </div>
                     <div>
@@ -161,7 +160,7 @@ $user = getCurrentUser();
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: #fffbeb; color: #d97706;">
+                    <div class="stat-icon warning">
                         <span class="material-symbols-outlined">hard_drive</span>
                     </div>
                     <div>
