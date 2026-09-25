@@ -427,6 +427,7 @@ class PackingStation {
         }
         this.isRecording = false;
         this.recordedChunks = [];
+        this.removeProgressCard(); // Hapus card ON PROCESS saat batal
         this.updateUIRecordingState(false);
         this.resiInput.value = '';
         this.focusInput();
@@ -501,12 +502,11 @@ class PackingStation {
                 this.playSound('success');
                 this.showToast(`✅ Berhasil! Video resi ${resiToSave} tersimpan (${durationSec} detik)`, 'success');
 
-                // Hapus card ON PROCESS PACKING
-                this.removeProgressCard();
-
-                // Tambah item baru di PALING ATAS history LANGSUNG (tanpa tunggu API)
+                // LANGSUNG ganti card ON PROCESS dengan card selesai di posisi yang sama
                 if (result.data) {
-                    this.prependHistoryItem(result.data, durationSec);
+                    this.replaceProgressWithDone(result.data, durationSec);
+                } else {
+                    this.removeProgressCard();
                 }
 
                 // Increment counter today langsung (optimistic)
@@ -518,8 +518,8 @@ class PackingStation {
                     setTimeout(() => todayEl.classList.remove('counter-bump'), 400);
                 }
 
-                // Reload history dari server (akan ganti list dengan data akurat)
-                setTimeout(() => this.loadRecentHistory(), 1500);
+                // Reload history dari server untuk data akurat (langsung, tanpa delay)
+                this.loadRecentHistory();
             } else {
                 this.playSound('error');
                 this.showToast(`❌ Gagal menyimpan: ${result.message}`, 'error');
@@ -558,13 +558,11 @@ class PackingStation {
         return `${m}:${s}`;
     }
 
-    // Langsung tampilkan item baru di paling atas history list (optimistic)
-    prependHistoryItem(data, durationSec) {
+    // Langsung ganti card ON PROCESS PACKING dengan card selesai (no delay, no race condition)
+    replaceProgressWithDone(data, durationSec) {
         if (!this.historyList) return;
 
-        // Hapus pesan "belum ada data" jika ada
-        const emptyMsg = this.historyList.querySelector('[data-empty]');
-        if (emptyMsg) emptyMsg.remove();
+        clearInterval(this._progressTimerInterval);
 
         const now = new Date();
         const pad = (n) => String(n).padStart(2, '0');
@@ -572,6 +570,7 @@ class PackingStation {
         const formattedDur  = this.formatDuration(durationSec);
 
         const div = document.createElement('div');
+        div.id  = 'donePackingCard'; // id sementara agar loadRecentHistory bisa identifikasi
         div.className = 'history-item history-item-new';
         div.innerHTML = `
             <div>
@@ -592,14 +591,19 @@ class PackingStation {
             </div>
         `;
 
-        // Sisipkan di paling atas
-        this.historyList.insertBefore(div, this.historyList.firstChild);
+        const progressCard = document.getElementById('progressPackingCard');
+        if (progressCard && progressCard.parentNode) {
+            // Ganti langsung di tempat yang sama (replace in-place)
+            progressCard.parentNode.replaceChild(div, progressCard);
+        } else {
+            // Fallback: insert di paling atas
+            const emptyMsg = this.historyList.querySelector('[data-empty]');
+            if (emptyMsg) emptyMsg.remove();
+            this.historyList.insertBefore(div, this.historyList.firstChild);
+        }
 
-        // Animasi masuk
+        // Animasi flash hijau
         requestAnimationFrame(() => div.classList.add('history-item-new-show'));
-
-        // Hapus kelas animasi setelah selesai
-        setTimeout(() => div.classList.remove('history-item-new-show'), 600);
     }
 
 
@@ -647,11 +651,7 @@ class PackingStation {
     removeProgressCard() {
         clearInterval(this._progressTimerInterval);
         const card = document.getElementById('progressPackingCard');
-        if (card) {
-            card.style.transition = 'opacity 0.3s ease';
-            card.style.opacity = '0';
-            setTimeout(() => card.remove(), 300);
-        }
+        if (card) card.remove(); // Hapus langsung, tanpa fade
     }
 
     async loadRecentHistory() {
@@ -685,7 +685,11 @@ class PackingStation {
             return;
         }
 
-        this.historyList.innerHTML = items.map(item => `
+        // Cek apakah ada donePackingCard (item yang baru saja di-submit)
+        const doneCard = document.getElementById('donePackingCard');
+
+        // Render list dari API
+        const html = items.map(item => `
             <div class="history-item">
                 <div>
                     <div class="history-resi">${this.escapeHtml(item.resi_no)}</div>
@@ -697,13 +701,26 @@ class PackingStation {
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo('${item.video_url}', '${item.resi_no}', ${item.id})" title="Putar Video">
+                    <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo('${item.video_url}', '${this.escapeHtml(item.resi_no)}', ${item.id})" title="Putar Video">
                         <span class="material-symbols-outlined" style="font-size: 17px; color: #2563eb;">play_arrow</span>
                     </button>
                 </div>
             </div>
         `).join('');
+
+        this.historyList.innerHTML = html;
+
+        // Jika doneCard masih ada & item pertama dari API bukan item yang baru,
+        // berarti race condition — sisipkan kembali doneCard di paling atas
+        if (doneCard) {
+            const firstApiResi = items[0]?.resi_no?.toLowerCase();
+            const doneResi = doneCard.querySelector('.history-resi')?.textContent?.toLowerCase();
+            if (doneResi && doneResi !== firstApiResi) {
+                this.historyList.insertBefore(doneCard, this.historyList.firstChild);
+            }
+        }
     }
+
 
     showToast(message, type = 'info') {
         let container = document.getElementById('toastContainer');
