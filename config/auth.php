@@ -29,10 +29,30 @@ function requireLogin() {
     }
 }
 
+function isSuperAdmin() {
+    return isLoggedIn() && (($_SESSION['role'] ?? '') === 'superadmin');
+}
+
+function isAdminOrSuperAdmin() {
+    return isLoggedIn() && in_array($_SESSION['role'] ?? '', ['admin', 'superadmin'], true);
+}
+
 function requireRole($role) {
     requireLogin();
-    if ($_SESSION['role'] !== $role) {
-        if ($_SESSION['role'] === 'operator') {
+    $currentRole = $_SESSION['role'] ?? '';
+
+    // superadmin memiliki akses penuh ke semua halaman
+    if ($currentRole === 'superadmin') {
+        return;
+    }
+
+    // admin memiliki akses ke halaman role admin
+    if ($role === 'admin' && $currentRole === 'admin') {
+        return;
+    }
+
+    if ($currentRole !== $role) {
+        if ($currentRole === 'operator') {
             header('Location: packing');
             exit;
         } else {

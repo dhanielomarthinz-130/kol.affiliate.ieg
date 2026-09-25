@@ -10,9 +10,9 @@ if (!isLoggedIn()) {
 }
 
 $currentUser = getCurrentUser();
-if ($currentUser['role'] !== 'admin') {
+if (!isAdminOrSuperAdmin()) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Akses khusus Admin.']);
+    echo json_encode(['success' => false, 'message' => 'Akses khusus Admin / Superadmin.']);
     exit;
 }
 
@@ -30,7 +30,14 @@ if ($action === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
     $name = trim($_POST['name'] ?? '');
-    $role = in_array($_POST['role'] ?? '', ['admin', 'operator']) ? $_POST['role'] : 'operator';
+    $requestedRole = trim($_POST['role'] ?? 'operator');
+
+    $allowedRoles = ['operator', 'admin'];
+    if (isSuperAdmin()) {
+        $allowedRoles[] = 'superadmin';
+    }
+
+    $role = in_array($requestedRole, $allowedRoles, true) ? $requestedRole : 'operator';
 
     if (empty($username) || empty($password) || empty($name)) {
         http_response_code(400);
@@ -48,24 +55,78 @@ if ($action === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $hashed = password_hash($password, PASSWORD_BCRYPT);
-    $stmt = $db->prepare("INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)");
+    $stmt = $db->prepare("INSERT INTO users (username, password, name, role, is_active) VALUES (?, ?, ?, ?, 1)");
     $stmt->execute([$username, $hashed, $name, $role]);
 
-    echo json_encode(['success' => true, 'message' => "User {$name} ({$username}) berhasil ditambahkan."]);
+    echo json_encode(['success' => true, 'message' => "Pengguna {$name} ({$username}) berhasil ditambahkan."]);
+    exit;
+}
+
+if ($action === 'toggle_status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $userId = intval($_POST['id'] ?? 0);
+
+    if ($userId <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID pengguna tidak valid.']);
+        exit;
+    }
+
+    if ($userId === intval($currentUser['id'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Anda tidak dapat menonaktifkan akun Anda sendiri.']);
+        exit;
+    }
+
+    $stmt = $db->prepare("SELECT id, username, name, role, is_active FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $targetUser = $stmt->fetch();
+
+    if (!$targetUser) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Pengguna tidak ditemukan.']);
+        exit;
+    }
+
+    // Hanya superadmin yang boleh menonaktifkan admin lain atau superadmin
+    if ($targetUser['role'] === 'superadmin' && !isSuperAdmin()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Hanya Superadmin yang dapat mengubah status akun Superadmin.']);
+        exit;
+    }
+
+    $newStatus = ($targetUser['is_active'] == 1) ? 0 : 1;
+    $upStmt = $db->prepare("UPDATE users SET is_active = ? WHERE id = ?");
+    $upStmt->execute([$newStatus, $userId]);
+
+    $statusText = ($newStatus === 1) ? 'diaktifkan' : 'dinonaktifkan (inactive)';
+    echo json_encode([
+        'success' => true,
+        'message' => "Akun {$targetUser['name']} berhasil {$statusText}.",
+        'is_active' => $newStatus
+    ]);
     exit;
 }
 
 if ($action === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $userId = intval($_POST['id'] ?? 0);
-    if ($userId === $currentUser['id']) {
+    if ($userId === intval($currentUser['id'])) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Tidak dapat menghapus akun Anda sendiri saat ini.']);
+        echo json_encode(['success' => false, 'message' => 'Tidak dapat menghapus akun Anda sendiri.']);
         exit;
     }
 
-    $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+    $stmt = $db->prepare("SELECT role FROM users WHERE id = ?");
     $stmt->execute([$userId]);
-    echo json_encode(['success' => true, 'message' => 'User berhasil dihapus.']);
+    $u = $stmt->fetch();
+    if ($u && $u['role'] === 'superadmin' && !isSuperAdmin()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Hanya Superadmin yang dapat menghapus sesama Superadmin.']);
+        exit;
+    }
+
+    $del = $db->prepare("DELETE FROM users WHERE id = ?");
+    $del->execute([$userId]);
+    echo json_encode(['success' => true, 'message' => 'Pengguna berhasil dihapus.']);
     exit;
 }
 

@@ -87,7 +87,7 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
 
             <!-- Right: Operator Profile & Actions -->
             <div class="operator-header-right">
-                <?php if ($user['role'] === 'admin'): ?>
+                <?php if (in_array($user['role'] ?? '', ['admin', 'superadmin'])): ?>
                 <a href="admin" class="header-admin-btn" title="Buka Portal Admin">
                     <span class="material-symbols-outlined" style="font-size: 16px;">dashboard</span>
                     <span>Portal Admin</span>
@@ -100,7 +100,7 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                     </div>
                     <div>
                         <div class="user-pill-name"><?= htmlspecialchars($user['name']) ?></div>
-                        <div class="user-pill-role <?= $user['role'] === 'admin' ? 'role-admin' : 'role-operator' ?>">
+                        <div class="user-pill-role <?= in_array($user['role'] ?? '', ['admin', 'superadmin']) ? 'role-admin' : 'role-operator' ?>">
                             <?= strtoupper($user['role']) ?>
                         </div>
                     </div>

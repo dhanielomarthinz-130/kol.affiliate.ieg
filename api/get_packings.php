@@ -56,8 +56,23 @@ $countStmt = $db->prepare("SELECT COUNT(*) as total FROM packings {$whereSql}");
 $countStmt->execute($params);
 $totalRows = $countStmt->fetch()['total'];
 
+// Sorting column and direction
+$sortBy = trim($_GET['sort_by'] ?? 'id');
+$sortDir = (strtoupper(trim($_GET['sort_dir'] ?? 'DESC')) === 'ASC') ? 'ASC' : 'DESC';
+
+$allowedSortCols = [
+    'id'               => 'id',
+    'resi_no'          => 'resi_no',
+    'operator_name'    => 'operator_name',
+    'duration_seconds' => 'duration_seconds',
+    'created_at'       => 'created_at',
+    'video_filesize'   => 'video_filesize',
+    'gdrive_url'       => 'gdrive_url'
+];
+$orderCol = $allowedSortCols[$sortBy] ?? 'id';
+
 // Query rows
-$querySql = "SELECT * FROM packings {$whereSql} ORDER BY id DESC LIMIT {$limit} OFFSET {$offset}";
+$querySql = "SELECT * FROM packings {$whereSql} ORDER BY {$orderCol} {$sortDir} LIMIT {$limit} OFFSET {$offset}";
 $stmt = $db->prepare($querySql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
@@ -69,6 +84,9 @@ foreach ($rows as &$row) {
     $row['formatted_duration'] = sprintf('%02d:%02d', floor($row['duration_seconds'] / 60), $row['duration_seconds'] % 60);
     $row['formatted_size'] = round($row['video_filesize'] / (1024 * 1024), 2) . ' MB';
     $row['formatted_date'] = date('d/m/Y H:i:s', strtotime($row['created_at']));
+    $row['is_synced'] = !empty($row['gdrive_url']);
+    $row['gdrive_url'] = $row['gdrive_url'] ?? '';
+    $row['synced_at_formatted'] = !empty($row['synced_at']) ? date('d/m/Y H:i', strtotime($row['synced_at'])) : '-';
 }
 
 // Calculate total packings today

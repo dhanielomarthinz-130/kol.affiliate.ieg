@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // export.php — Export ke Excel (.xls) dengan link video
 require_once __DIR__ . "/config/auth.php";
 requireRole("admin");
@@ -94,11 +94,11 @@ echo "</Styles>\n";
 echo "<Worksheet ss:Name=\"Rekap Packing\">\n<Table>\n";
 echo "<Column ss:Width=\"40\"/><Column ss:Width=\"180\"/><Column ss:Width=\"130\"/>";
 echo "<Column ss:Width=\"145\"/><Column ss:Width=\"145\"/><Column ss:Width=\"65\"/>";
-echo "<Column ss:Width=\"80\"/><Column ss:Width=\"85\"/><Column ss:Width=\"110\"/><Column ss:Width=\"280\"/>\n";
+echo "<Column ss:Width=\"80\"/><Column ss:Width=\"85\"/><Column ss:Width=\"110\"/><Column ss:Width=\"260\"/><Column ss:Width=\"260\"/>\n";
 
 // Header
 echo "<Row ss:Height=\"28\">\n";
-foreach (["No","No Resi / Invoice","Nama Operator","Waktu Mulai","Waktu Selesai","Durasi (dtk)","Durasi Format","Ukuran (MB)","Link Video","URL Video Lengkap"] as $h) {
+foreach (["No","No Resi / Invoice","Nama Operator","Waktu Mulai","Waktu Selesai","Durasi (dtk)","Durasi Format","Ukuran (MB)","Link Video Lokal","Link Google Drive","URL Lokal Lengkap"] as $h) {
     echo "<Cell ss:StyleID=\"header\"><Data ss:Type=\"String\">" . xesc($h) . "</Data></Cell>\n";
 }
 echo "</Row>\n";
@@ -113,6 +113,7 @@ foreach ($rows as $row) {
     $durMin    = sprintf("%02d:%02d", floor($row["duration_seconds"]/60), $row["duration_seconds"]%60);
     $sizeMb    = number_format($row["video_filesize"]/(1024*1024), 2, ".", "");
     $videoUrl  = $baseUrl . "/uploads/videos/" . $row["video_filename"];
+    $gdriveUrl = $row["gdrive_url"] ?? "";
 
     echo "<Row ss:Height=\"20\">\n";
     echo "<Cell ss:StyleID=\"{$sN}\"><Data ss:Type=\"Number\">{$no}</Data></Cell>\n";
@@ -123,7 +124,12 @@ foreach ($rows as $row) {
     echo "<Cell ss:StyleID=\"{$sN}\"><Data ss:Type=\"Number\">" . intval($row["duration_seconds"]) . "</Data></Cell>\n";
     echo "<Cell ss:StyleID=\"{$sD}\"><Data ss:Type=\"String\">" . xesc($durMin) . "</Data></Cell>\n";
     echo "<Cell ss:StyleID=\"{$sN}\"><Data ss:Type=\"Number\">{$sizeMb}</Data></Cell>\n";
-    echo "<Cell ss:StyleID=\"{$sL}\" ss:HRef=\"" . xesc($videoUrl) . "\"><Data ss:Type=\"String\">\xe2\x96\xb6 Putar / Download</Data></Cell>\n";
+    echo "<Cell ss:StyleID=\"{$sL}\" ss:HRef=\"" . xesc($videoUrl) . "\"><Data ss:Type=\"String\">\xe2\x96\xb6 Putar Lokal</Data></Cell>\n";
+    if (!empty($gdriveUrl)) {
+        echo "<Cell ss:StyleID=\"{$sL}\" ss:HRef=\"" . xesc($gdriveUrl) . "\"><Data ss:Type=\"String\">\xe2\x96\xb6 Buka Google Drive</Data></Cell>\n";
+    } else {
+        echo "<Cell ss:StyleID=\"{$sD}\"><Data ss:Type=\"String\">Belum Sync</Data></Cell>\n";
+    }
     echo "<Cell ss:StyleID=\"{$sD}\"><Data ss:Type=\"String\">" . xesc($videoUrl) . "</Data></Cell>\n";
     echo "</Row>\n";
     $no++;

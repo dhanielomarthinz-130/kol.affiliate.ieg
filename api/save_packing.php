@@ -157,3 +157,15 @@ if ($canExec) {
     );
     pclose(popen($cmd, 'r'));
 }
+
+// STEP 6: Auto Sync to Google Sheets & Drive jika diaktifkan (non-blocking untuk operator)
+try {
+    require_once __DIR__ . '/../config/google_sync.php';
+    $syncConfig = getGoogleSyncConfig();
+    if (!empty($syncConfig['auto_sync']) && !empty($syncConfig['gas_webapp_url'])) {
+        sendPackingToGoogle((int)$insertId);
+    }
+} catch (Exception $syncErr) {
+    error_log("Auto sync failed for packing #{$insertId}: " . $syncErr->getMessage());
+}
+

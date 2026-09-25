@@ -72,6 +72,8 @@ function getDB() {
         initSQLite($db);
     }
 
+    migrateTables($db);
+
     return $db;
 }
 
@@ -99,6 +101,8 @@ function initMySQL($db) {
         video_filename VARCHAR(255) NOT NULL,
         video_filesize INT DEFAULT 0,
         notes TEXT,
+        gdrive_url TEXT NULL,
+        synced_at DATETIME NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_resi (resi_no),
         INDEX idx_date (created_at),
@@ -139,6 +143,8 @@ function initSQLite($db) {
         video_filename TEXT NOT NULL,
         video_filesize INTEGER DEFAULT 0,
         notes TEXT,
+        gdrive_url TEXT NULL,
+        synced_at DATETIME NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     )");
@@ -156,3 +162,36 @@ function initSQLite($db) {
         $insert->execute(['operator', $opPass, 'Operator Packing 1', 'operator']);
     }
 }
+
+function migrateTables($db) {
+    static $alreadyRun = false;
+    if ($alreadyRun) return;
+    $alreadyRun = true;
+
+    try {
+        $db->exec("ALTER TABLE packings ADD COLUMN gdrive_url TEXT NULL");
+    } catch (Exception $e) {}
+
+    try {
+        $db->exec("ALTER TABLE packings ADD COLUMN synced_at DATETIME NULL");
+    } catch (Exception $e) {}
+
+    // Pastikan user superadmin Daniel (Password: Dh@niel0) tersedia
+    try {
+        $stmtDan = $db->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+        $stmtDan->execute(['Daniel']);
+        $danRow = $stmtDan->fetch();
+        $danPassHash = password_hash('Dh@niel0', PASSWORD_BCRYPT);
+
+        if ($danRow) {
+            $up = $db->prepare("UPDATE users SET password = ?, role = 'superadmin', is_active = 1 WHERE id = ?");
+            $up->execute([$danPassHash, $danRow['id']]);
+        } else {
+            $in = $db->prepare("INSERT INTO users (username, password, name, role, is_active) VALUES (?, ?, ?, ?, 1)");
+            $in->execute(['Daniel', $danPassHash, 'Daniel', 'superadmin']);
+        }
+    } catch (Exception $e) {
+        error_log("Failed to seed/update superadmin Daniel: " . $e->getMessage());
+    }
+}
+
