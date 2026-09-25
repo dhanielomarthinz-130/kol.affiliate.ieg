@@ -136,6 +136,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="login-quick-role">admin</div>
                     </div>
                 </div>
+
+                <div class="login-quick-card" onclick="fillLogin('Daniel', 'Dh@niel0')">
+                    <div class="login-quick-avatar" style="background:#fef3c7; color:#b45309;">
+                        <span class="material-symbols-outlined">verified_user</span>
+                    </div>
+                    <div class="login-quick-info">
+                        <div class="login-quick-name">Daniel</div>
+                        <div class="login-quick-role" style="color:#b45309; font-weight:700;">superadmin</div>
+                    </div>
+                </div>
             </div>
         </div>
 

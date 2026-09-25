@@ -50,6 +50,7 @@ function getDB() {
                 ]);
                 $db->exec("SET time_zone = '+07:00'");
                 initMySQL($db);
+                migrateTables($db);
                 return $db;
             } catch (Exception $e) {
                 error_log("MySQL connection failed on {$host}: " . $e->getMessage());
@@ -119,6 +120,23 @@ function initMySQL($db) {
         $insert->execute(['admin', $adminPass, 'Administrator KOL', 'admin']);
         $insert->execute(['operator', $opPass, 'Operator Packing 1', 'operator']);
     }
+
+    // Pastikan user superadmin Daniel (Password: Dh@niel0) selalu ada di MySQL
+    try {
+        $stmtDan = $db->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1");
+        $stmtDan->execute(['Daniel']);
+        $danRow = $stmtDan->fetch();
+        $danPassHash = password_hash('Dh@niel0', PASSWORD_BCRYPT);
+        if ($danRow) {
+            $up = $db->prepare("UPDATE users SET password = ?, role = 'superadmin', is_active = 1 WHERE id = ?");
+            $up->execute([$danPassHash, $danRow['id']]);
+        } else {
+            $in = $db->prepare("INSERT INTO users (username, password, name, role, is_active) VALUES (?, ?, ?, ?, 1)");
+            $in->execute(['Daniel', $danPassHash, 'Daniel', 'superadmin']);
+        }
+    } catch (Exception $e) {
+        error_log("Failed to seed/update superadmin Daniel in initMySQL: " . $e->getMessage());
+    }
 }
 
 function initSQLite($db) {
@@ -169,6 +187,10 @@ function migrateTables($db) {
     $alreadyRun = true;
 
     try {
+        $db->exec("ALTER TABLE users ADD COLUMN is_active INT DEFAULT 1");
+    } catch (Exception $e) {}
+
+    try {
         $db->exec("ALTER TABLE packings ADD COLUMN gdrive_url TEXT NULL");
     } catch (Exception $e) {}
 
@@ -176,9 +198,9 @@ function migrateTables($db) {
         $db->exec("ALTER TABLE packings ADD COLUMN synced_at DATETIME NULL");
     } catch (Exception $e) {}
 
-    // Pastikan user superadmin Daniel (Password: Dh@niel0) tersedia
+    // Pastikan user superadmin Daniel (Password: Dh@niel0) tersedia dan aktif
     try {
-        $stmtDan = $db->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+        $stmtDan = $db->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1");
         $stmtDan->execute(['Daniel']);
         $danRow = $stmtDan->fetch();
         $danPassHash = password_hash('Dh@niel0', PASSWORD_BCRYPT);
