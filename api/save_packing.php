@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // api/save_packing.php
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -19,11 +19,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $currentUser = getCurrentUser();
-$resiNo = trim($_POST['resi_no'] ?? '');
-$startTime = trim($_POST['start_time'] ?? '');
-$endTime = trim($_POST['end_time'] ?? '');
-$duration = intval($_POST['duration_seconds'] ?? 0);
-$notes = trim($_POST['notes'] ?? '');
+$resiNo      = trim($_POST['resi_no'] ?? '');
+$startTime   = trim($_POST['start_time'] ?? '');
+$endTime     = trim($_POST['end_time'] ?? '');
+$duration    = intval($_POST['duration_seconds'] ?? 0);
+$notes       = trim($_POST['notes'] ?? '');
 
 if (empty($resiNo)) {
     http_response_code(400);
@@ -38,13 +38,12 @@ if (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK) {
     exit;
 }
 
-$fileTmp = $_FILES['video']['tmp_name'];
+$fileTmp     = $_FILES['video']['tmp_name'];
 $rawFileSize = $_FILES['video']['size'];
 
-// Clean Resi for filename
-$safeResi = preg_replace('/[^A-Za-z0-9_-]/', '_', $resiNo);
+$safeResi  = preg_replace('/[^A-Za-z0-9_-]/', '_', $resiNo);
 $timestamp = date('Ymd_His');
-$random = substr(bin2hex(random_bytes(4)), 0, 6);
+$random    = substr(bin2hex(random_bytes(4)), 0, 6);
 
 $targetDir = realpath(__DIR__ . '/../uploads/videos');
 if (!$targetDir) {
@@ -53,117 +52,88 @@ if (!$targetDir) {
 }
 $targetDir .= DIRECTORY_SEPARATOR;
 
-// Temporary upload path
-$tempUploadedPath = $targetDir . "raw_{$safeResi}_{$timestamp}_{$random}.tmp";
-if (!move_uploaded_file($fileTmp, $tempUploadedPath)) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Gagal memindahkan file upload sementara.']);
-    exit;
-}
+// STEP 1: Deteksi mime type
+$finfo  = finfo_open(FILEINFO_MIME_TYPE);
+$mime   = finfo_file($finfo, $fileTmp);
+finfo_close($finfo);
+$rawExt = (str_contains($mime, 'mp4')) ? 'mp4' : 'webm';
 
-// Target compressed MP4
-$finalFilename = "{$safeResi}_{$timestamp}_{$random}.mp4";
+// STEP 2: Pindah file langsung tanpa menunggu FFmpeg
+$finalFilename = "{$safeResi}_{$timestamp}_{$random}.{$rawExt}";
 $finalFilePath = $targetDir . $finalFilename;
 
-// Check ffmpeg path
-$ffmpegBin = realpath(__DIR__ . '/../bin/ffmpeg.exe');
-if (!$ffmpegBin || !file_exists($ffmpegBin)) {
-    // Check system or winget fallback
-    $ffmpegBin = 'ffmpeg';
+if (!move_uploaded_file($fileTmp, $finalFilePath)) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Gagal memindahkan file upload.']);
+    exit;
 }
+$finalFileSize = filesize($finalFilePath);
 
-$isCompressed = false;
-$finalFileSize = $rawFileSize;
-
-$canExec = function_exists('exec') && !in_array('exec', array_map('trim', explode(',', (string)ini_get('disable_functions'))));
-
-if ($canExec) {
-    $qualityMode = trim($_POST['quality_mode'] ?? 'saver');
-    $crf = ($qualityMode === 'saver') ? '28' : '25';
-    $audioBitrate = ($qualityMode === 'saver') ? '32k' : '64k';
-
-    // Highly optimized H.264 + AAC compression
-    // -crf 28 in saver mode yields ~350-500 KB per video while keeping label text readable
-    // -preset fast: quick encoding so operator is not kept waiting
-    // -movflags +faststart: allows instant playback in browser while streaming
-    $cmd = sprintf(
-        '"%s" -y -i %s -vcodec libx264 -crf %s -preset fast -pix_fmt yuv420p -acodec aac -b:a %s -movflags +faststart %s 2>&1',
-        $ffmpegBin,
-        escapeshellarg($tempUploadedPath),
-        $crf,
-        $audioBitrate,
-        escapeshellarg($finalFilePath)
-    );
-
-    $output = [];
-    $retCode = 0;
-    exec($cmd, $output, $retCode);
-
-    if ($retCode === 0 && file_exists($finalFilePath) && filesize($finalFilePath) > 0) {
-        $isCompressed = true;
-        $finalFileSize = filesize($finalFilePath);
-        @unlink($tempUploadedPath); // remove raw uncompressed temp file
-    }
-}
-
-// Fallback if compression was not possible or ffmpeg failed
-if (!$isCompressed) {
-    // Check if uploaded file was webm or mp4
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime = finfo_file($finfo, $tempUploadedPath);
-    finfo_close($finfo);
-
-    $ext = (strpos($mime, 'mp4') !== false) ? 'mp4' : 'webm';
-    $finalFilename = "{$safeResi}_{$timestamp}_{$random}.{$ext}";
-    $finalFilePath = $targetDir . $finalFilename;
-    rename($tempUploadedPath, $finalFilePath);
-    $finalFileSize = filesize($finalFilePath);
-}
-
+// STEP 3: INSERT ke DB segera
 try {
-    $db = getDB();
+    $db     = getDB();
     $nowWib = date('Y-m-d H:i:s');
     if (empty($startTime)) $startTime = date('Y-m-d H:i:s', time() - $duration);
-    if (empty($endTime)) $endTime = $nowWib;
+    if (empty($endTime))   $endTime   = $nowWib;
     $userId = !empty($currentUser['id']) ? intval($currentUser['id']) : null;
 
     $stmt = $db->prepare("INSERT INTO packings 
         (resi_no, user_id, operator_name, start_time, end_time, duration_seconds, video_filename, video_filesize, notes, created_at) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    
+
     $stmt->execute([
-        $resiNo,
-        $userId,
-        $currentUser['name'],
-        $startTime,
-        $endTime,
-        $duration,
-        $finalFilename,
-        $finalFileSize,
-        $notes,
-        $nowWib
+        $resiNo, $userId, $currentUser['name'],
+        $startTime, $endTime, $duration,
+        $finalFilename, $finalFileSize, $notes, $nowWib
     ]);
 
     $insertId = $db->lastInsertId();
 
-    $savedPct = $rawFileSize > 0 ? round((1 - ($finalFileSize / $rawFileSize)) * 100) : 0;
-    $compNote = $isCompressed ? " (Kompresi hemat {$savedPct}%)" : "";
-
+    // Kirim response sukses ke client SEBELUM FFmpeg
     echo json_encode([
         'success' => true,
-        'message' => "Video MP4 resi {$resiNo} berhasil disimpan & dikompres!{$compNote}",
-        'data' => [
-            'id' => $insertId,
-            'resi_no' => $resiNo,
-            'operator_name' => $currentUser['name'],
+        'message' => "Video resi {$resiNo} berhasil disimpan!",
+        'data'    => [
+            'id'               => $insertId,
+            'resi_no'          => $resiNo,
+            'operator_name'    => $currentUser['name'],
             'duration_seconds' => $duration,
-            'video_url' => 'uploads/videos/' . $finalFilename,
-            'is_mp4' => (substr($finalFilename, -4) === '.mp4'),
-            'file_size' => $finalFileSize,
-            'created_at' => $endTime
+            'video_url'        => 'uploads/videos/' . $finalFilename,
+            'is_mp4'           => ($rawExt === 'mp4'),
+            'file_size'        => $finalFileSize,
+            'created_at'       => $endTime
         ]
     ]);
+
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Kesalahan database: ' . $e->getMessage()]);
+    exit;
+}
+
+// STEP 4: Flush response ke browser terlebih dahulu
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+} else {
+    ignore_user_abort(true);
+    if (ob_get_level() > 0) { ob_end_flush(); }
+    flush();
+}
+
+// STEP 5: FFmpeg async non-blocking di background (Windows)
+$canExec = function_exists('exec') && !in_array('exec', array_map('trim', explode(',', (string)ini_get('disable_functions'))));
+$ffmpegBin = realpath(__DIR__ . '/../bin/ffmpeg.exe');
+if (!$ffmpegBin || !file_exists($ffmpegBin)) { $ffmpegBin = 'ffmpeg'; }
+
+if ($canExec) {
+    $qualityMode  = trim($_POST['quality_mode'] ?? 'saver');
+    $crf          = ($qualityMode === 'saver') ? '28' : '25';
+    $audioBitrate = ($qualityMode === 'saver') ? '32k' : '64k';
+    $cmpFilePath  = $targetDir . "{$safeResi}_{$timestamp}_{$random}_cmp.mp4";
+
+    $cmd = sprintf(
+        'cmd /c start /B "" "%s" -y -i "%s" -vcodec libx264 -crf %s -preset fast -pix_fmt yuv420p -acodec aac -b:a %s -movflags +faststart "%s" > NUL 2>&1',
+        $ffmpegBin, $finalFilePath, $crf, $audioBitrate, $cmpFilePath
+    );
+    pclose(popen($cmd, 'r'));
 }

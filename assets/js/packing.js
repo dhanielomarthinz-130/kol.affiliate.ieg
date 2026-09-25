@@ -285,7 +285,7 @@ class PackingStation {
         const qualitySelect = document.getElementById('qualitySelect');
         const isSaver = qualitySelect ? qualitySelect.value === 'saver' : true;
 
-        // Set bitrate accordingly (Saver: 420kbps video / 32kbps audio for ~400KB per video)
+        // Set bitrate accordingly
         options.videoBitsPerSecond = isSaver ? 420000 : 850000;
         options.audioBitsPerSecond = isSaver ? 32000 : 64000;
 
@@ -311,12 +311,15 @@ class PackingStation {
         this.isRecording = true;
         this.startTime = new Date();
 
-        // Audio and UI updates
+        // Audio dan UI updates
         this.playSound('start');
         this.updateUIRecordingState(true);
         this.resiInput.value = '';
         this.focusInput();
         this.showToast(`Mulai merekam packing resi: ${resi}`, 'info');
+
+        // Tampilkan card ON PROCESS PACKING di daftar riwayat
+        this.showProgressCard(resi);
     }
 
     updateUIRecordingState(recording) {
@@ -450,15 +453,32 @@ class PackingStation {
             if (result.success) {
                 this.playSound('success');
                 this.showToast(`✅ Berhasil! Video resi ${resiToSave} tersimpan (${durationSec} detik)`, 'success');
+
+                // Hapus card ON PROCESS PACKING
+                this.removeProgressCard();
+
+                // Increment counter today langsung (optimistic) tanpa tunggu reload API
+                const todayEl = document.getElementById('todayTotalCount');
+                if (todayEl) {
+                    const current = parseInt(todayEl.textContent, 10) || 0;
+                    todayEl.textContent = current + 1;
+                    todayEl.classList.add('counter-bump');
+                    setTimeout(() => todayEl.classList.remove('counter-bump'), 400);
+                }
+
+                // Reload history dari server
                 this.loadRecentHistory();
             } else {
                 this.playSound('error');
                 this.showToast(`❌ Gagal menyimpan: ${result.message}`, 'error');
+                // Hapus progress card juga saat gagal
+                this.removeProgressCard();
             }
         } catch (err) {
             console.error('Upload error:', err);
             this.playSound('error');
             this.showToast(`❌ Terjadi kesalahan jaringan saat upload video.`, 'error');
+            this.removeProgressCard();
         } finally {
             // Selalu reset isSaving agar scan berikutnya bisa berjalan normal
             this.isSaving = false;
@@ -478,6 +498,60 @@ class PackingStation {
         const i = pad(date.getMinutes());
         const s = pad(date.getSeconds());
         return `${Y}-${m}-${d} ${H}:${i}:${s}`;
+    }
+
+    // --------------------------------------------------------
+    // PROGRESS CARD: Tampilkan saat rekaman mulai
+    // --------------------------------------------------------
+    showProgressCard(resi) {
+        if (!this.historyList) return;
+
+        // Hapus card lama jika ada (safety)
+        const old = document.getElementById('progressPackingCard');
+        if (old) old.remove();
+
+        // Buat card baru
+        const card = document.createElement('div');
+        card.id = 'progressPackingCard';
+        card.className = 'history-item progress-packing-card';
+        card.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                <div class="progress-rec-dot"></div>
+                <div>
+                    <div class="history-resi" style="color:#dc2626;">${this.escapeHtml(resi)}</div>
+                    <div class="history-sub" style="display:flex; align-items:center; gap:4px; color:#ef4444;">
+                        <span class="material-symbols-outlined" style="font-size:13px;">radio_button_checked</span>
+                        <span>ON PROCESS PACKING</span>
+                        <span>•</span>
+                        <span class="material-symbols-outlined" style="font-size:13px;">timer</span>
+                        <span id="progressCardTimer">00:00</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Sisipkan di paling atas list
+        this.historyList.insertBefore(card, this.historyList.firstChild);
+
+        // Update timer di card setiap detik
+        let sec = 0;
+        this._progressTimerInterval = setInterval(() => {
+            sec++;
+            const m = String(Math.floor(sec / 60)).padStart(2, '0');
+            const s = String(sec % 60).padStart(2, '0');
+            const el = document.getElementById('progressCardTimer');
+            if (el) el.textContent = `${m}:${s}`;
+        }, 1000);
+    }
+
+    removeProgressCard() {
+        clearInterval(this._progressTimerInterval);
+        const card = document.getElementById('progressPackingCard');
+        if (card) {
+            card.style.transition = 'opacity 0.3s ease';
+            card.style.opacity = '0';
+            setTimeout(() => card.remove(), 300);
+        }
     }
 
     async loadRecentHistory() {
