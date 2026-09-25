@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // api/save_packing.php
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -28,6 +28,23 @@ $notes       = trim($_POST['notes'] ?? '');
 if (empty($resiNo)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Nomor Resi / Invoice tidak boleh kosong.']);
+    exit;
+}
+
+// -------------------------------------------------------
+// SERVER-SIDE DUPLICATE GUARD: Cek resi sudah pernah ada
+// -------------------------------------------------------
+$dbCheck = getDB();
+$stmtCheck = $dbCheck->prepare("SELECT id, operator_name FROM packings WHERE resi_no = ? LIMIT 1");
+$stmtCheck->execute([$resiNo]);
+$existing = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+if ($existing) {
+    http_response_code(409); // Conflict
+    echo json_encode([
+        'success' => false,
+        'duplicate' => true,
+        'message' => "Resi {$resiNo} sudah pernah di-scan oleh operator: {$existing['operator_name']}."
+    ]);
     exit;
 }
 

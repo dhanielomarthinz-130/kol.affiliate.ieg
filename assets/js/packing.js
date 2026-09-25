@@ -234,7 +234,7 @@ class PackingStation {
         }, 100);
     }
 
-    handleBarcodeScan(scannedCode) {
+    async handleBarcodeScan(scannedCode) {
         if (!this.stream) {
             this.showToast('Kamera belum aktif!', 'error');
             this.playSound('error');
@@ -249,6 +249,25 @@ class PackingStation {
         }
 
         if (!this.isRecording) {
+            // -------------------------------------------------------
+            // CEK DUPLIKAT: Apakah resi ini sudah pernah di-scan?
+            // -------------------------------------------------------
+            try {
+                const res = await fetch('api/check_resi.php?resi=' + encodeURIComponent(scannedCode), { cache: 'no-store' });
+                const check = await res.json();
+                if (check.exists) {
+                    // Tampilkan error notif duplikat
+                    this.playSound('error');
+                    this.showDuplicateWarning(scannedCode, check);
+                    this.resiInput.value = '';
+                    this.focusInput();
+                    return; // Stop, jangan mulai rekaman
+                }
+            } catch (e) {
+                // Jika check gagal (network error), biarkan lanjut
+                console.warn('Duplicate check failed, proceeding anyway:', e);
+            }
+
             // STEP 1: Mulai Rekaman Baru
             this.startRecording(scannedCode);
         } else {
@@ -263,6 +282,34 @@ class PackingStation {
                 this.focusInput();
             }
         }
+    }
+
+    // Notifikasi duplikat resi dengan detail kapan & siapa yang scan
+    showDuplicateWarning(resi, info) {
+        let container = document.getElementById('toastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.className = 'toast-container';
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-error toast-duplicate';
+        toast.innerHTML = `
+            <span class="material-symbols-outlined" style="color:#f43f5e; font-size:26px; flex-shrink:0;">error_circle</span>
+            <div>
+                <div style="font-weight:700; font-size:0.9rem; margin-bottom:3px;">🚫 RESI SUDAH PERNAH DI-SCAN!</div>
+                <div style="font-size:0.8rem; opacity:0.9;">No Resi: <b>${this.escapeHtml(resi)}</b></div>
+                ${info.operator ? `<div style="font-size:0.78rem; opacity:0.8;">Operator: ${this.escapeHtml(info.operator)} &bull; ${this.escapeHtml(info.time || '')}</div>` : ''}
+            </div>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 6000); // Tampil lebih lama (6 detik) agar terbaca
     }
 
     startRecording(resi) {
@@ -457,7 +504,12 @@ class PackingStation {
                 // Hapus card ON PROCESS PACKING
                 this.removeProgressCard();
 
-                // Increment counter today langsung (optimistic) tanpa tunggu reload API
+                // Tambah item baru di PALING ATAS history LANGSUNG (tanpa tunggu API)
+                if (result.data) {
+                    this.prependHistoryItem(result.data, durationSec);
+                }
+
+                // Increment counter today langsung (optimistic)
                 const todayEl = document.getElementById('todayTotalCount');
                 if (todayEl) {
                     const current = parseInt(todayEl.textContent, 10) || 0;
@@ -466,8 +518,8 @@ class PackingStation {
                     setTimeout(() => todayEl.classList.remove('counter-bump'), 400);
                 }
 
-                // Reload history dari server
-                this.loadRecentHistory();
+                // Reload history dari server (akan ganti list dengan data akurat)
+                setTimeout(() => this.loadRecentHistory(), 1500);
             } else {
                 this.playSound('error');
                 this.showToast(`❌ Gagal menyimpan: ${result.message}`, 'error');
@@ -500,9 +552,57 @@ class PackingStation {
         return `${Y}-${m}-${d} ${H}:${i}:${s}`;
     }
 
-    // --------------------------------------------------------
-    // PROGRESS CARD: Tampilkan saat rekaman mulai
-    // --------------------------------------------------------
+    formatDuration(sec) {
+        const m = String(Math.floor(sec / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    // Langsung tampilkan item baru di paling atas history list (optimistic)
+    prependHistoryItem(data, durationSec) {
+        if (!this.historyList) return;
+
+        // Hapus pesan "belum ada data" jika ada
+        const emptyMsg = this.historyList.querySelector('[data-empty]');
+        if (emptyMsg) emptyMsg.remove();
+
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const formattedDate = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        const formattedDur  = this.formatDuration(durationSec);
+
+        const div = document.createElement('div');
+        div.className = 'history-item history-item-new';
+        div.innerHTML = `
+            <div>
+                <div class="history-resi">${this.escapeHtml(data.resi_no)}</div>
+                <div class="history-sub" style="display:flex; align-items:center; gap:4px;">
+                    <span>${formattedDate}</span>
+                    <span>•</span>
+                    <span class="material-symbols-outlined" style="font-size:13px; color:#94a3b8;">timer</span>
+                    <span>${formattedDur}</span>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <button class="btn btn-outline btn-sm btn-icon"
+                    onclick="window.previewVideo('${this.escapeHtml(data.video_url)}', '${this.escapeHtml(data.resi_no)}', ${data.id})"
+                    title="Putar Video">
+                    <span class="material-symbols-outlined" style="font-size:17px; color:#2563eb;">play_arrow</span>
+                </button>
+            </div>
+        `;
+
+        // Sisipkan di paling atas
+        this.historyList.insertBefore(div, this.historyList.firstChild);
+
+        // Animasi masuk
+        requestAnimationFrame(() => div.classList.add('history-item-new-show'));
+
+        // Hapus kelas animasi setelah selesai
+        setTimeout(() => div.classList.remove('history-item-new-show'), 600);
+    }
+
+
     showProgressCard(resi) {
         if (!this.historyList) return;
 
