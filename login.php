@@ -4,7 +4,7 @@ require_once __DIR__ . '/config/auth.php';
 
 if (isLoggedIn()) {
     $user = getCurrentUser();
-    header('Location: ' . ($user['role'] === 'admin' ? 'admin' : 'packing'));
+    header('Location: ' . (in_array($user['role'], ['admin', 'superadmin'], true) ? 'admin' : 'packing'));
     exit;
 }
 
@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if (loginUser($username, $password)) {
             $user = getCurrentUser();
-            header('Location: ' . ($user['role'] === 'admin' ? 'admin' : 'packing'));
+            header('Location: ' . (in_array($user['role'], ['admin', 'superadmin'], true) ? 'admin' : 'packing'));
             exit;
         } else {
             $error = 'Username atau password salah!';

@@ -20,7 +20,11 @@ $db = getDB();
 $action = $_REQUEST['action'] ?? 'list';
 
 if ($action === 'list') {
-    $stmt = $db->query("SELECT id, username, name, role, is_active, created_at FROM users ORDER BY id ASC");
+    if (isSuperAdmin()) {
+        $stmt = $db->query("SELECT id, username, name, role, is_active, created_at FROM users ORDER BY id ASC");
+    } else {
+        $stmt = $db->query("SELECT id, username, name, role, is_active, created_at FROM users WHERE role != 'superadmin' ORDER BY id ASC");
+    }
     $users = $stmt->fetchAll();
     echo json_encode(['success' => true, 'data' => $users]);
     exit;

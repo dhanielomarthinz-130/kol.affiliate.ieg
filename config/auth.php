@@ -64,8 +64,8 @@ function requireRole($role) {
 
 function loginUser($username, $password) {
     $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM users WHERE username = ? AND is_active = 1 LIMIT 1");
-    $stmt->execute([$username]);
+    $stmt = $db->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?) AND is_active = 1 LIMIT 1");
+    $stmt->execute([trim($username)]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
