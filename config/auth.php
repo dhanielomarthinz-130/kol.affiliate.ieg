@@ -15,10 +15,10 @@ function getCurrentUser() {
         return null;
     }
     return [
-        'id' => $_SESSION['user_id'],
-        'username' => $_SESSION['username'],
-        'name' => $_SESSION['name'],
-        'role' => $_SESSION['role']
+        'id' => $_SESSION['user_id'] ?? null,
+        'username' => $_SESSION['username'] ?? '',
+        'name' => $_SESSION['name'] ?? '',
+        'role' => $_SESSION['role'] ?? ''
     ];
 }
 

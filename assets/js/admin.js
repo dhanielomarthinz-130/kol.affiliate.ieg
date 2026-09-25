@@ -14,29 +14,109 @@ let _fpTo = null;
 let _isBatchSyncRunning = false;
 let _batchSyncCancelled = false;
 
+// ==========================================
+// RESILIENT JSON RESPONSE PARSER
+// ==========================================
+async function parseResponseJson(res) {
+    const text = await res.text();
+    if (!text || !text.trim()) {
+        throw new Error(`Server tidak merespon (HTTP ${res.status}). Kemungkinan sesi berakhir atau timeout.`);
+    }
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        // Hapus tag HTML jika server mengirim halaman error HTML
+        const cleanSnippet = text.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+        throw new Error(`Respon server bukan format JSON (HTTP ${res.status}): ${cleanSnippet || 'Format tidak valid'}`);
+    }
+}
+
+// ==========================================
+// BROWSER URL STATE SYNCHRONIZATION
+// ==========================================
+function syncUrlWithState(replace = true) {
+    try {
+        const params = new URLSearchParams();
+        const pageName = _currentView || 'packings';
+        params.set('page', pageName);
+
+        if (pageName === 'packings') {
+            const filters = getActiveFilterParams();
+            if (filters.search) params.set('search', filters.search);
+            if (filters.operator_id && filters.operator_id !== '0') params.set('operator', filters.operator_id);
+            if (filters.date_from) params.set('date_from', filters.date_from);
+            if (filters.date_to) params.set('date_to', filters.date_to);
+            if (typeof currentPage !== 'undefined' && currentPage > 1) params.set('p', currentPage);
+        }
+
+        const newUrl = window.location.pathname + '?' + params.toString();
+        if (replace) {
+            window.history.replaceState({ view: pageName }, '', newUrl);
+        } else {
+            window.history.pushState({ view: pageName }, '', newUrl);
+        }
+    } catch (err) {
+        console.warn('URL sync error:', err);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initFlatpickr();
+
+    // Baca parameter dari URL browser
+    const urlParams = new URLSearchParams(window.location.search);
+    const pageFromUrl = urlParams.get('page') || (window.location.hash ? window.location.hash.replace('#', '') : 'packings');
+    
+    // Pulihkan filter dari URL jika ada
+    const searchFromUrl = urlParams.get('search');
+    const opFromUrl = urlParams.get('operator');
+    const dfFromUrl = urlParams.get('date_from');
+    const dtFromUrl = urlParams.get('date_to');
+    const pFromUrl = parseInt(urlParams.get('p') || '1', 10);
+    if (!isNaN(pFromUrl) && pFromUrl > 1) currentPage = pFromUrl;
+
+    if (searchFromUrl) {
+        const sEl = document.getElementById('searchResi');
+        if (sEl) sEl.value = searchFromUrl;
+    }
+    if (dfFromUrl && _fpFrom) {
+        _fpFrom.setDate(dfFromUrl, false);
+        const fromEl = document.getElementById('filterDateFrom');
+        if (fromEl) fromEl.value = dfFromUrl;
+    }
+    if (dtFromUrl && _fpTo) {
+        _fpTo.setDate(dtFromUrl, false);
+        const toEl = document.getElementById('filterDateTo');
+        if (toEl) toEl.value = dtFromUrl;
+    }
+
     loadStats();
-    loadOperatorsFilter();
-    loadPackings(1);
+    loadOperatorsFilter().then(() => {
+        if (opFromUrl) {
+            const opEl = document.getElementById('filterOperator');
+            if (opEl) opEl.value = opFromUrl;
+        }
+    });
+
     setupEventListeners();
     updateGoogleSyncBadge();
     startAutoRefresh();
 
-    // Check hash for direct tab view
-    if (window.location.hash === '#users') {
-        switchAdminView('users');
-    } else if (window.location.hash === '#maintenance') {
-        switchAdminView('maintenance');
-    }
+    // Buka view sesuai URL parameter
+    switchAdminView(pageFromUrl || 'packings', false);
+
+    window.addEventListener('popstate', () => {
+        const params = new URLSearchParams(window.location.search);
+        const p = params.get('page') || 'packings';
+        switchAdminView(p, false);
+    });
 });
 
 // ==========================================
 // VIEW SWITCHING (TABS)
 // ==========================================
-function switchAdminView(view) {
+function switchAdminView(view, updateUrl = true) {
     _currentView = view;
-    window.location.hash = (view === 'packings') ? '' : view;
 
     const navPackings = document.getElementById('navPackings');
     const navUsers = document.getElementById('navUsers');
@@ -47,7 +127,6 @@ function switchAdminView(view) {
     const viewMaint = document.getElementById('viewMaintenance');
 
     const titleEl = document.getElementById('mainPageTitle');
-    const subEl = document.getElementById('mainPageSub');
 
     // Reset navigation
     if (navPackings) navPackings.classList.remove('active');
@@ -63,22 +142,21 @@ function switchAdminView(view) {
         if (navUsers) navUsers.classList.add('active');
         if (viewUsers) viewUsers.style.display = 'block';
         if (titleEl) titleEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:26px; color:#2563eb;">manage_accounts</span><span>Kelola Operator &amp; Pengguna</span>`;
-        if (subEl) subEl.textContent = 'Daftar semua operator packing dan akun administrator sistem beserta status aktif/nonaktif.';
         loadUsersTable();
     } else if (view === 'maintenance') {
         if (navMaint) navMaint.classList.add('active');
         if (viewMaint) viewMaint.style.display = 'block';
         if (titleEl) titleEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:26px; color:#f59e0b;">build_circle</span><span>Maintenance &amp; Diagnostik Sistem</span>`;
-        if (subEl) subEl.textContent = 'Area khusus Superadmin untuk memantau server, mengoptimasi database, dan membersihkan file sampah.';
         loadMaintenanceInfo();
     } else {
         // default: packings
         if (navPackings) navPackings.classList.add('active');
         if (viewPackings) viewPackings.style.display = 'block';
         if (titleEl) titleEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:26px; color:#2563eb;">table_view</span><span>Semua Data Hasil Packaging</span>`;
-        if (subEl) subEl.textContent = 'Pusat pemantauan rekaman video, verifikasi nomor resi, dan audit durasi kerja operator packing.';
         loadPackings(currentPage);
     }
+
+    syncUrlWithState(updateUrl ? false : true);
 }
 
 // ==========================================
@@ -97,6 +175,7 @@ function initFlatpickr() {
             clearPresetActive();
             loadPackings(1);
             updateGoogleSyncBadge();
+            syncUrlWithState(true);
         }
     };
 
@@ -158,6 +237,7 @@ function applyDatePreset(preset, btn) {
 
     loadPackings(1);
     updateGoogleSyncBadge();
+    syncUrlWithState(true);
 }
 
 function getActiveFilterParams() {
@@ -182,6 +262,7 @@ function setupEventListeners() {
             searchTimeout = setTimeout(() => {
                 loadPackings(1);
                 updateGoogleSyncBadge();
+                syncUrlWithState(true);
             }, 300);
         });
     }
@@ -192,6 +273,7 @@ function setupEventListeners() {
         filterOperator.addEventListener('change', () => {
             loadPackings(1);
             updateGoogleSyncBadge();
+            syncUrlWithState(true);
         });
     }
 
@@ -202,6 +284,7 @@ function setupEventListeners() {
             if (searchInput) searchInput.value = '';
             if (filterOperator) filterOperator.value = '0';
             applyDatePreset('today', document.getElementById('btnPresetToday'));
+            syncUrlWithState(true);
         });
     }
 
@@ -230,7 +313,7 @@ function setupEventListeners() {
                     method: 'POST',
                     body: formData
                 });
-                const data = await res.json();
+                const data = await parseResponseJson(res);
                 if (data.success) {
                     showAdminToast(data.message, 'success');
                     userForm.reset();
@@ -269,7 +352,7 @@ function setupEventListeners() {
                     method: 'POST',
                     body: formData
                 });
-                const data = await res.json();
+                const data = await parseResponseJson(res);
                 if (data.success) {
                     showAdminToast(data.message, 'success');
                     closeGoogleSyncModal();
@@ -292,7 +375,7 @@ function setupEventListeners() {
 async function loadStats(silent = false) {
     try {
         const res = await fetch('api/stats.php?_t=' + Date.now(), { cache: 'no-store' });
-        const data = await res.json();
+        const data = await parseResponseJson(res);
         if (data.success) {
             const animateVal = (id, newVal) => {
                 const el = document.getElementById(id);
@@ -330,7 +413,7 @@ function startAutoRefresh() {
 async function loadOperatorsFilter() {
     try {
         const res = await fetch('api/users.php?action=list');
-        const data = await res.json();
+        const data = await parseResponseJson(res);
         if (data.success) {
             const select = document.getElementById('filterOperator');
             if (select) {
@@ -394,7 +477,7 @@ async function loadPackings(page = 1) {
 
     try {
         const res = await fetch('api/get_packings.php?' + params.toString());
-        const result = await res.json();
+        const result = await parseResponseJson(res);
 
         if (result.success) {
             renderTable(result.data, result.total, page, result.total_pages);
@@ -526,7 +609,7 @@ async function loadUsersTable() {
 
     try {
         const res = await fetch('api/users.php?action=list');
-        const data = await res.json();
+        const data = await parseResponseJson(res);
 
         if (data.success && data.data) {
             if (data.data.length === 0) {
@@ -604,7 +687,7 @@ async function toggleUserStatus(userId, userName, currentStatus) {
             method: 'POST',
             body: formData
         });
-        const data = await res.json();
+        const data = await parseResponseJson(res);
 
         if (data.success) {
             showAdminToast(data.message, 'success');
@@ -629,7 +712,7 @@ async function deleteUserRecord(userId, username) {
             method: 'POST',
             body: formData
         });
-        const data = await res.json();
+        const data = await parseResponseJson(res);
         if (data.success) {
             showAdminToast(data.message, 'success');
             loadUsersTable();
@@ -666,7 +749,7 @@ async function loadMaintenanceInfo() {
 
     try {
         const res = await fetch('api/maintenance.php?action=get_info&_t=' + Date.now());
-        const data = await res.json();
+        const data = await parseResponseJson(res);
 
         if (data.success) {
             if (freeEl) freeEl.textContent = data.storage.disk_free_formatted;
@@ -701,7 +784,7 @@ async function runOptimizeDB() {
 
     try {
         const res = await fetch('api/maintenance.php?action=optimize_db', { method: 'POST' });
-        const data = await res.json();
+        const data = await parseResponseJson(res);
         if (data.success) {
             showAdminToast(data.message, 'success');
             loadMaintenanceInfo();
@@ -729,7 +812,7 @@ async function runCleanTempFiles() {
 
     try {
         const res = await fetch('api/maintenance.php?action=clean_temp', { method: 'POST' });
-        const data = await res.json();
+        const data = await parseResponseJson(res);
         if (data.success) {
             showAdminToast(data.message, 'success');
             loadMaintenanceInfo();
@@ -755,7 +838,7 @@ async function updateGoogleSyncBadge() {
         const params = new URLSearchParams(Object.assign({ action: 'get_config' }, filters));
 
         const res = await fetch('api/sync_google.php?' + params.toString());
-        const data = await res.json();
+        const data = await parseResponseJson(res);
         if (data.success) {
             const badges = [
                 document.getElementById('pendingSyncBadge'),
@@ -795,7 +878,7 @@ function closeGoogleSyncModal() {
 async function loadGoogleSyncConfig() {
     try {
         const res = await fetch('api/sync_google.php?action=get_config');
-        const data = await res.json();
+        const data = await parseResponseJson(res);
         if (data.success && data.config) {
             const urlInput = document.getElementById('cfgGasUrl');
             const folderInput = document.getElementById('cfgFolderId');
@@ -847,7 +930,7 @@ async function testGoogleConnection() {
             method: 'POST',
             body: formData
         });
-        const data = await res.json();
+        const data = await parseResponseJson(res);
 
         if (alertBox) {
             if (data.success) {
@@ -891,7 +974,7 @@ async function syncSinglePacking(id, btn) {
             method: 'POST',
             body: formData
         });
-        const data = await res.json();
+        const data = await parseResponseJson(res);
 
         if (data.success && data.drive_url) {
             showAdminToast('Berhasil disinkronkan ke Google Drive & Sheet!', 'success');
@@ -975,7 +1058,7 @@ async function startBatchSync() {
     try {
         const queryParams = new URLSearchParams(Object.assign({ action: 'get_config' }, activeFilters));
         const cfgRes = await fetch('api/sync_google.php?' + queryParams.toString());
-        const cfgData = await cfgRes.json();
+        const cfgData = await parseResponseJson(cfgRes);
 
         if (!cfgData.success || !cfgData.config?.gas_webapp_url) {
             if (statusText) statusText.textContent = 'URL Google Apps Script belum diatur!';
@@ -991,7 +1074,7 @@ async function startBatchSync() {
             if (statusText) statusText.textContent = 'Semua data sesuai filter sudah tersinkronkan!';
             if (progressText) progressText.textContent = '100%';
             if (progressBar) progressBar.style.width = '100%';
-            if (logBox) logBox.innerHTML += `<div style="color:#10b981; margin-top:4px;">[SELESAI] Tidak ada paket tertunda untuk filter: <b>${escapeHtml(filterDesc)}</b>. Semua rekaman sudah ada di Google Drive &amp; Sheets!</div>`;
+            if (logBox) logBox.innerHTML += `<div style="color:#10b981; margin-top:4px;">[SELESAI] Tidak ada antrean paket untuk filter: <b>${escapeHtml(filterDesc)}</b>. Semua rekaman sudah ada di Google Drive &amp; Sheets!</div>`;
             if (btnCancel) btnCancel.style.display = 'none';
             if (btnDone) btnDone.style.display = 'inline-flex';
             _isBatchSyncRunning = false;
@@ -1015,7 +1098,7 @@ async function startBatchSync() {
                 method: 'POST',
                 body: formData
             });
-            const syncData = await syncRes.json();
+            const syncData = await parseResponseJson(syncRes);
 
             if (!syncData.success) {
                 if (logBox) logBox.innerHTML += `<div style="color:#ef4444; margin-top:4px;">[GAGAL] ${escapeHtml(syncData.message || 'Error')}</div>`;
@@ -1058,8 +1141,8 @@ async function startBatchSync() {
         }
 
     } catch (err) {
-        if (statusText) statusText.textContent = 'Terjadi kesalahan sistem saat sinkronisasi.';
-        if (logBox) logBox.innerHTML += `<div style="color:#ef4444; margin-top:4px;">[ERROR KONEKSI] ${escapeHtml(err.message)}</div>`;
+        if (statusText) statusText.textContent = 'Terjadi kendala saat sinkronisasi.';
+        if (logBox) logBox.innerHTML += `<div style="color:#ef4444; margin-top:4px;">[ERROR SINKRONISASI] ${escapeHtml(err.message)}</div>`;
     } finally {
         _isBatchSyncRunning = false;
         if (btnCancel) btnCancel.style.display = 'none';
@@ -1155,7 +1238,7 @@ async function deletePackingRecord(id, resiNo) {
             method: 'POST',
             body: formData
         });
-        const result = await res.json();
+        const result = await parseResponseJson(res);
         if (result.success) {
             showAdminToast(result.message, 'success');
             loadPackings(currentPage);

@@ -133,9 +133,6 @@ $googleSyncCfg = getGoogleSyncConfig();
                         <span class="material-symbols-outlined" style="font-size: 26px; color: var(--primary);">table_view</span>
                         <span>Semua Data Hasil Packaging</span>
                     </h1>
-                    <p style="font-size: 0.8rem; color: #64748b; margin-top: 2px;" id="mainPageSub">
-                        Pusat pemantauan rekaman video, verifikasi nomor resi, dan audit durasi kerja operator packing.
-                    </p>
                 </div>
             </div>
 
@@ -144,7 +141,7 @@ $googleSyncCfg = getGoogleSyncConfig();
                  ========================================== -->
             <div id="viewPackings">
                 <!-- Summary KPI Cards -->
-                <div class="stats-grid">
+                <div class="stats-grid" style="margin-bottom: 1.25rem;">
                     <div class="stat-card">
                         <div class="stat-icon primary">
                             <span class="material-symbols-outlined">inventory_2</span>
@@ -186,26 +183,16 @@ $googleSyncCfg = getGoogleSyncConfig();
                     </div>
                 </div>
 
-                <!-- Realtime Refresh Indicator -->
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom: 1.25rem; font-size:0.76rem; color:#64748b;">
-                    <span class="realtime-dot"></span>
-                    <span>Data diperbarui otomatis setiap 15 detik &nbsp;•&nbsp; Terakhir diperbarui: <b id="lastRefreshTime" style="color:#0f172a;">-</b></span>
-                    <button onclick="loadStats()" style="background:none; border:none; cursor:pointer; color:#2563eb; font-size:0.76rem; font-weight:600; padding:0; display:flex; align-items:center; gap:3px;" title="Refresh sekarang">
-                        <span class="material-symbols-outlined" style="font-size:14px;">refresh</span>
-                        Refresh Sekarang
-                    </button>
-                </div>
-
                 <!-- Modern Filter Card with Flatpickr & Quick Presets -->
                 <div class="card" style="margin-bottom: 1.25rem;">
                     <div class="card-body">
-                        <!-- Quick Preset Pills -->
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
-                            <div style="font-size:0.78rem; font-weight:700; color:#475569; display:flex; align-items:center; gap:4px;">
-                                <span class="material-symbols-outlined" style="font-size:16px; color:#2563eb;">tune</span>
-                                <span>Filter Cepat Periode Tanggal:</span>
+                        <!-- Quick Preset Pills (Segmented) -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                            <div style="font-size:0.8rem; font-weight:700; color:#334155; display:flex; align-items:center; gap:6px;">
+                                <span class="material-symbols-outlined" style="font-size:18px; color:#2563eb;">calendar_month</span>
+                                <span>Pilih Periode Tanggal</span>
                             </div>
-                            <div class="date-presets" style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <div class="date-presets-segmented">
                                 <button type="button" class="preset-date-btn active" id="btnPresetToday" onclick="applyDatePreset('today', this)">Hari Ini</button>
                                 <button type="button" class="preset-date-btn" onclick="applyDatePreset('yesterday', this)">Kemarin</button>
                                 <button type="button" class="preset-date-btn" onclick="applyDatePreset('last7', this)">7 Hari Terakhir</button>

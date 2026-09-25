@@ -1841,9 +1841,47 @@ html, body {
 /* =============================================
    PRESET DATE BUTTONS & FLATPICKR CUSTOM STYLES
    ============================================= */
+.date-presets-segmented {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    padding: 3px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    gap: 3px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.date-presets-segmented .preset-date-btn {
+    padding: 6px 14px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+    box-shadow: none;
+}
+.date-presets-segmented .preset-date-btn:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.7);
+}
+.date-presets-segmented .preset-date-btn.active {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
 .preset-date-btn {
-    padding: 3px 10px;
-    border-radius: 6px;
+    padding: 4px 11px;
+    border-radius: 7px;
     border: 1px solid var(--border-color);
     background: #ffffff;
     color: #475569;

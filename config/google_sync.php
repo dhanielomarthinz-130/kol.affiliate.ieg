@@ -146,8 +146,8 @@ function sendPackingToGoogle(int $packingId): array {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 180); // 3 menit untuk upload video
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 45); // Max 45 detik agar aman di shared hosting
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 12);
     applyCurlDnsOptions($ch);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
