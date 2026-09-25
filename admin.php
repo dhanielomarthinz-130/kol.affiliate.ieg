@@ -170,7 +170,16 @@ $user = getCurrentUser();
                 </div>
             </div>
 
-            <!-- Filter & Search Card -->
+            <!-- Realtime Refresh Indicator -->
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom: 1.25rem; font-size:0.76rem; color:#64748b;">
+                <span class="realtime-dot"></span>
+                <span>Data diperbarui otomatis setiap 15 detik &nbsp;•&nbsp; Terakhir diperbarui: <b id="lastRefreshTime" style="color:#0f172a;">-</b></span>
+                <button onclick="loadStats()" style="background:none; border:none; cursor:pointer; color:#2563eb; font-size:0.76rem; font-weight:600; padding:0; display:flex; align-items:center; gap:3px;" title="Refresh sekarang">
+                    <span class="material-symbols-outlined" style="font-size:14px;">refresh</span>
+                    Refresh Sekarang
+                </button>
+            </div>
+
             <div class="card" style="margin-bottom: 1.25rem;">
                 <div class="card-body">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) 110px 100px; gap: 10px; align-items: end;">
@@ -289,7 +298,13 @@ $user = getCurrentUser();
             </div>
 
             <div class="modal-body">
-                <video id="adminVideoPlayer" class="modal-video-player" controls></video>
+                <!-- Loading Spinner saat video belum siap -->
+                <div id="adminVideoLoading" style="display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; min-height:220px; color:#64748b;">
+                    <div class="video-spinner"></div>
+                    <div style="font-size:0.85rem; font-weight:600;">Memuat video, harap tunggu...</div>
+                </div>
+
+                <video id="adminVideoPlayer" class="modal-video-player" controls preload="auto"></video>
 
                 <!-- Audit Tools: Playback Speed & Download -->
                 <div class="playback-controls">

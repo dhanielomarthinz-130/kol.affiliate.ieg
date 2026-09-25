@@ -647,16 +647,44 @@ window.previewVideo = function(url, resi, id) {
     const player = document.getElementById('modalVideoPlayer');
     const title = document.getElementById('modalResiTitle');
     const dlBtn = document.getElementById('modalPackingDownloadBtn');
+    const loadingEl = document.getElementById('packingVideoLoading');
 
     if (modal && player) {
-        player.src = url;
+        // Tampilkan spinner, sembunyikan player dulu
+        if (loadingEl) loadingEl.style.display = 'flex';
+        player.style.display = 'none';
+
+        // Reset player
+        player.pause();
+        player.removeAttribute('src');
+        player.load();
+
         if (title) title.textContent = resi;
         if (dlBtn && id) {
             dlBtn.href = 'download.php?id=' + id;
             dlBtn.style.display = 'inline-flex';
         }
         modal.classList.add('active');
-        player.play();
+
+        // Load video, tampilkan saat siap
+        player.preload = 'auto';
+        player.src = url;
+
+        const onReady = () => {
+            if (loadingEl) loadingEl.style.display = 'none';
+            player.style.display = 'block';
+            player.play().catch(() => {});
+            player.removeEventListener('canplay', onReady);
+        };
+        player.addEventListener('canplay', onReady);
+
+        // Fallback 8 detik
+        setTimeout(() => {
+            if (loadingEl && loadingEl.style.display !== 'none') {
+                loadingEl.style.display = 'none';
+                player.style.display = 'block';
+            }
+        }, 8000);
     }
 };
 

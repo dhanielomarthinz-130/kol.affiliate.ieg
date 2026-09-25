@@ -2,12 +2,15 @@
 
 let currentPage = 1;
 const pageLimit = 15;
+let _autoRefreshTimer = null;
+let _lastTodayCount = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadStats();
     loadOperatorsFilter();
     loadPackings(1);
     setupEventListeners();
+    startAutoRefresh(); // Mulai polling realtime
 });
 
 function setupEventListeners() {
@@ -81,15 +84,39 @@ function setupEventListeners() {
     }
 }
 
-async function loadStats() {
+async function loadStats(silent = false) {
     try {
-        const res = await fetch('api/stats.php');
+        const res = await fetch('api/stats.php?_t=' + Date.now(), { cache: 'no-store' });
         const data = await res.json();
         if (data.success) {
-            document.getElementById('statTodayCount').textContent = data.today_count;
-            document.getElementById('statTodayAvg').textContent = data.today_avg_duration + 's';
-            document.getElementById('statTotalCount').textContent = data.total_count;
-            document.getElementById('statStorage').textContent = data.total_storage_mb + ' MB';
+            // Animasi bump saat angka berubah
+            const animateVal = (id, newVal) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.textContent !== String(newVal)) {
+                    el.classList.add('stat-bump');
+                    setTimeout(() => el.classList.remove('stat-bump'), 500);
+                }
+                el.textContent = newVal;
+            };
+
+            animateVal('statTodayCount', data.today_count);
+            animateVal('statTodayAvg', data.today_avg_duration + 's');
+            animateVal('statTotalCount', data.total_count);
+            animateVal('statStorage', data.total_storage_mb + ' MB');
+
+            // Jika hari ini bertambah, reload tabel juga
+            if (_lastTodayCount !== null && data.today_count > _lastTodayCount && !silent) {
+                loadPackings(currentPage);
+            }
+            _lastTodayCount = data.today_count;
+
+            // Update last-refresh label
+            const refreshEl = document.getElementById('lastRefreshTime');
+            if (refreshEl) {
+                const now = new Date();
+                refreshEl.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+            }
 
             // Top operators
             const list = document.getElementById('topOperatorsList');
@@ -116,6 +143,13 @@ async function loadStats() {
     } catch (e) {
         console.warn('Failed loading stats', e);
     }
+}
+
+function startAutoRefresh() {
+    // Refresh stats setiap 15 detik (realtime)
+    _autoRefreshTimer = setInterval(() => {
+        loadStats(); // juga reload tabel jika ada data baru
+    }, 15000);
 }
 
 async function loadOperatorsFilter() {
@@ -250,10 +284,19 @@ function openAdminVideoModal(videoUrl, resi, operator, duration, date, id) {
     const title = document.getElementById('videoResiTitle');
     const meta = document.getElementById('videoMetaInfo');
     const dlBtn = document.getElementById('modalDownloadLink');
+    const loadingEl = document.getElementById('adminVideoLoading');
 
     if (modal && player) {
-        player.src = videoUrl;
+        // Tampilkan loading spinner dulu
+        if (loadingEl) loadingEl.style.display = 'flex';
+        player.style.display = 'none';
+
+        // Reset player bersih
+        player.pause();
+        player.removeAttribute('src');
+        player.load();
         player.playbackRate = 1.0;
+
         document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
         const normalBtn = document.querySelector('.speed-btn[data-speed="1"]');
         if (normalBtn) normalBtn.classList.add('active');
@@ -266,7 +309,26 @@ function openAdminVideoModal(videoUrl, resi, operator, duration, date, id) {
         }
 
         modal.classList.add('active');
-        player.play();
+
+        // Load video — tampilkan player saat siap diputar
+        player.preload = 'auto';
+        player.src = videoUrl;
+
+        const onReady = () => {
+            if (loadingEl) loadingEl.style.display = 'none';
+            player.style.display = 'block';
+            player.play().catch(() => {});
+            player.removeEventListener('canplay', onReady);
+        };
+        player.addEventListener('canplay', onReady);
+
+        // Fallback: jika 8 detik belum canplay, paksa tampil saja
+        setTimeout(() => {
+            if (loadingEl && loadingEl.style.display !== 'none') {
+                loadingEl.style.display = 'none';
+                player.style.display = 'block';
+            }
+        }, 8000);
     }
 }
 

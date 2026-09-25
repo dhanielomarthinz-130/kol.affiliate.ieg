@@ -282,7 +282,13 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                 </button>
             </div>
             <div class="modal-body">
-                <video id="modalVideoPlayer" class="modal-video-player" controls></video>
+                <!-- Loading Spinner -->
+                <div id="packingVideoLoading" style="display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; min-height:200px; color:#64748b;">
+                    <div class="video-spinner"></div>
+                    <div style="font-size:0.85rem; font-weight:600;">Memuat video rekaman...</div>
+                </div>
+
+                <video id="modalVideoPlayer" class="modal-video-player" controls preload="auto"></video>
 
                 <!-- Speed playback controls -->
                 <div class="playback-controls">
