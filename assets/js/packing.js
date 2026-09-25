@@ -241,7 +241,7 @@ class PackingStation {
             return;
         }
 
-        // GUARD: Sedang proses upload/kompresi ke server, abaikan scan apapun
+        // GUARD: Sedang proses upload/kompresi ke server
         if (this.isSaving) {
             this.showToast('⏳ Sedang menyimpan video... Tunggu sebentar.', 'warning');
             this.resiInput.value = '';
@@ -249,23 +249,34 @@ class PackingStation {
         }
 
         if (!this.isRecording) {
-            // -------------------------------------------------------
-            // CEK DUPLIKAT: Apakah resi ini sudah pernah di-scan?
-            // -------------------------------------------------------
+            // GUARD: Cegah 2 check duplikat berjalan bersamaan
+            if (this._checkingDuplicate) {
+                this.resiInput.value = '';
+                return;
+            }
+            this._checkingDuplicate = true;
+
             try {
                 const res = await fetch('api/check_resi.php?resi=' + encodeURIComponent(scannedCode), { cache: 'no-store' });
                 const check = await res.json();
                 if (check.exists) {
-                    // Tampilkan error notif duplikat
                     this.playSound('error');
                     this.showDuplicateWarning(scannedCode, check);
                     this.resiInput.value = '';
                     this.focusInput();
-                    return; // Stop, jangan mulai rekaman
+                    return;
                 }
             } catch (e) {
-                // Jika check gagal (network error), biarkan lanjut
                 console.warn('Duplicate check failed, proceeding anyway:', e);
+            } finally {
+                // Selalu reset flag ini agar scan berikutnya bisa jalan
+                this._checkingDuplicate = false;
+            }
+
+            // Re-check: pastikan state masih valid setelah await selesai
+            if (this.isRecording || this.isSaving) {
+                this.resiInput.value = '';
+                return;
             }
 
             // STEP 1: Mulai Rekaman Baru
@@ -767,11 +778,14 @@ window.previewVideo = function(url, resi, id) {
     const loadingEl = document.getElementById('packingVideoLoading');
 
     if (modal && player) {
+        // Batalkan fallback timer sebelumnya jika ada
+        if (window._videoFallbackTimer) clearTimeout(window._videoFallbackTimer);
+
         // Tampilkan spinner, sembunyikan player dulu
         if (loadingEl) loadingEl.style.display = 'flex';
         player.style.display = 'none';
 
-        // Reset player
+        // Reset player (hapus listener lama)
         player.pause();
         player.removeAttribute('src');
         player.load();
@@ -788,6 +802,7 @@ window.previewVideo = function(url, resi, id) {
         player.src = url;
 
         const onReady = () => {
+            clearTimeout(window._videoFallbackTimer);
             if (loadingEl) loadingEl.style.display = 'none';
             player.style.display = 'block';
             player.play().catch(() => {});
@@ -795,9 +810,9 @@ window.previewVideo = function(url, resi, id) {
         };
         player.addEventListener('canplay', onReady);
 
-        // Fallback 8 detik
-        setTimeout(() => {
-            if (loadingEl && loadingEl.style.display !== 'none') {
+        // Fallback 8 detik — hanya aktif jika modal masih terbuka
+        window._videoFallbackTimer = setTimeout(() => {
+            if (modal.classList.contains('active') && loadingEl && loadingEl.style.display !== 'none') {
                 loadingEl.style.display = 'none';
                 player.style.display = 'block';
             }
@@ -808,6 +823,11 @@ window.previewVideo = function(url, resi, id) {
 window.closeVideoModal = function() {
     const modal = document.getElementById('videoModal');
     const player = document.getElementById('modalVideoPlayer');
+    // Batalkan fallback timer saat modal ditutup
+    if (window._videoFallbackTimer) {
+        clearTimeout(window._videoFallbackTimer);
+        window._videoFallbackTimer = null;
+    }
     if (modal && player) {
         player.pause();
         player.src = '';

@@ -106,6 +106,11 @@ try {
 
     $insertId = $db->lastInsertId();
 
+    // Baca quality_mode SEBELUM flush (setelah flush POST tidak bisa dibaca)
+    $qualityMode  = trim($_POST['quality_mode'] ?? 'saver');
+    $crf          = ($qualityMode === 'saver') ? '28' : '25';
+    $audioBitrate = ($qualityMode === 'saver') ? '32k' : '64k';
+
     // Kirim response sukses ke client SEBELUM FFmpeg
     echo json_encode([
         'success' => true,
@@ -143,9 +148,7 @@ $ffmpegBin = realpath(__DIR__ . '/../bin/ffmpeg.exe');
 if (!$ffmpegBin || !file_exists($ffmpegBin)) { $ffmpegBin = 'ffmpeg'; }
 
 if ($canExec) {
-    $qualityMode  = trim($_POST['quality_mode'] ?? 'saver');
-    $crf          = ($qualityMode === 'saver') ? '28' : '25';
-    $audioBitrate = ($qualityMode === 'saver') ? '32k' : '64k';
+    // $qualityMode, $crf, $audioBitrate sudah dibaca sebelum flush di atas
     $cmpFilePath  = $targetDir . "{$safeResi}_{$timestamp}_{$random}_cmp.mp4";
 
     $cmd = sprintf(
