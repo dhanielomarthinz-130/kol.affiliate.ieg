@@ -437,17 +437,17 @@ async function deleteUser(id, name) {
 }
 
 function exportToCSV() {
-    const search = document.getElementById('searchResi')?.value || '';
-    const operatorId = document.getElementById('filterOperator')?.value || '0';
-    const dateFrom = document.getElementById('filterDateFrom')?.value || '';
-    const dateTo = document.getElementById('filterDateTo')?.value || '';
+    const search     = document.getElementById('searchResi')?.value      || '';
+    const operatorId = document.getElementById('filterOperator')?.value  || '0';
+    const dateFrom   = document.getElementById('filterDateFrom')?.value  || '';
+    const dateTo     = document.getElementById('filterDateTo')?.value    || '';
 
     const params = new URLSearchParams({
-        search: search,
+        search:      search,
         operator_id: operatorId,
-        date_from: dateFrom,
-        date_to: dateTo,
-        export: 'csv'
+        date_from:   dateFrom,
+        date_to:     dateTo,
+        export:      'excel'
     });
 
     window.location.href = 'export.php?' + params.toString();

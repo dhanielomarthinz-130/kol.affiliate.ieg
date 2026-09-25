@@ -62,7 +62,7 @@ $user = getCurrentUser();
 
                         <button type="button" class="nav-link" onclick="exportToCSV()">
                             <span class="material-symbols-outlined">file_download</span>
-                            <span>Ekspor CSV / Excel</span>
+                            <span>Ekspor Excel</span>
                         </button>
                     </nav>
                 </div>
@@ -122,7 +122,7 @@ $user = getCurrentUser();
 
                     <button onclick="exportToCSV()" class="btn btn-success btn-sm">
                         <span class="material-symbols-outlined">download</span>
-                        <span>Download Rekap CSV</span>
+                        <span>Download Excel + Link Video</span>
                     </button>
                 </div>
             </div>
