@@ -443,8 +443,8 @@ function renderTable(rows, total, page, totalPages) {
             </td>
             <td>
                 ${row.is_synced && row.gdrive_url ? `
-                    <a href="${escapeHtml(row.gdrive_url)}" target="_blank" class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:5px; color:#16a34a; border-color:#bbf7d0; background:#f0fdf4; padding:3px 8px; text-decoration:none;" title="Buka rekaman di Google Drive">
-                        <svg width="15" height="15" viewBox="0 0 87.3 78" style="vertical-align: middle;">
+                    <a href="${escapeHtml(row.gdrive_url)}" target="_blank" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:5px; color:#15803d; border:1px solid #86efac; background:#f0fdf4; padding:3px 9px; text-decoration:none; font-weight:600; font-size:0.78rem; border-radius:6px;" title="Buka rekaman di Google Drive (Sudah Sync)">
+                        <svg width="14" height="14" viewBox="0 0 87.3 78" style="vertical-align: middle;">
                           <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
                           <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
                           <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
@@ -452,7 +452,8 @@ function renderTable(rows, total, page, totalPages) {
                           <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
                           <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
                         </svg>
-                        <span>Drive</span>
+                        <span class="material-symbols-outlined" style="font-size:14px; color:#16a34a;">check_circle</span>
+                        <span>Done Sync</span>
                     </a>
                 ` : `
                     <button class="btn btn-outline btn-sm" onclick="syncSinglePacking(${row.id}, this)" style="display:inline-flex; align-items:center; gap:5px; color:#64748b; padding:3px 8px;" title="Upload ke Google Drive & Sheets sekarang">
@@ -756,18 +757,22 @@ async function updateGoogleSyncBadge() {
         const res = await fetch('api/sync_google.php?' + params.toString());
         const data = await res.json();
         if (data.success) {
-            const badge = document.getElementById('pendingSyncBadge');
-            if (badge) {
-                // Gunakan filter_pending_count agar badge mencerminkan filter yang aktif!
-                const count = (typeof data.filter_pending_count !== 'undefined') ? data.filter_pending_count : data.pending_count;
-                if (count > 0) {
-                    badge.textContent = count;
-                    badge.style.display = 'inline-block';
-                    badge.title = `${count} paket sesuai filter aktif belum di-sync ke Google`;
-                } else {
-                    badge.style.display = 'none';
+            const badges = [
+                document.getElementById('pendingSyncBadge'),
+                document.getElementById('pendingSyncBadgeFilter')
+            ];
+            const count = (typeof data.filter_pending_count !== 'undefined') ? data.filter_pending_count : data.pending_count;
+            badges.forEach(b => {
+                if (b) {
+                    if (count > 0) {
+                        b.textContent = count;
+                        b.style.display = 'inline-block';
+                        b.title = `${count} paket sesuai filter aktif belum di-sync ke Google`;
+                    } else {
+                        b.style.display = 'none';
+                    }
                 }
-            }
+            });
         }
     } catch (e) {
         console.warn('Failed to update sync badge', e);
@@ -891,8 +896,8 @@ async function syncSinglePacking(id, btn) {
         if (data.success && data.drive_url) {
             showAdminToast('Berhasil disinkronkan ke Google Drive & Sheet!', 'success');
             btn.outerHTML = `
-                <a href="${escapeHtml(data.drive_url)}" target="_blank" class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:5px; color:#16a34a; border-color:#bbf7d0; background:#f0fdf4; padding:3px 8px; text-decoration:none;" title="Buka rekaman di Google Drive">
-                    <svg width="15" height="15" viewBox="0 0 87.3 78" style="vertical-align: middle;">
+                <a href="${escapeHtml(data.drive_url)}" target="_blank" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:5px; color:#15803d; border:1px solid #86efac; background:#f0fdf4; padding:3px 9px; text-decoration:none; font-weight:600; font-size:0.78rem; border-radius:6px;" title="Buka rekaman di Google Drive (Sudah Sync)">
+                    <svg width="14" height="14" viewBox="0 0 87.3 78" style="vertical-align: middle;">
                       <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
                       <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
                       <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
@@ -900,7 +905,8 @@ async function syncSinglePacking(id, btn) {
                       <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
                       <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
                     </svg>
-                    <span>Drive</span>
+                    <span class="material-symbols-outlined" style="font-size:14px; color:#16a34a;">check_circle</span>
+                    <span>Done Sync</span>
                 </a>
             `;
             updateGoogleSyncBadge();
