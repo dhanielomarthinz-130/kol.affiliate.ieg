@@ -73,6 +73,12 @@ $googleSyncCfg = getGoogleSyncConfig();
                         </a>
                         <?php endif; ?>
 
+                        <button type="button" class="nav-link" onclick="startBatchSync()">
+                            <span class="material-symbols-outlined" style="color: #0284c7;">cloud_upload</span>
+                            <span>Sync ke Google Sheet</span>
+                            <span class="nav-badge" id="pendingSyncBadge" style="background: #f59e0b; color: #fff; display: none; font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; margin-left: auto;">0</span>
+                        </button>
+
                         <button type="button" class="nav-link" onclick="openGoogleSyncModal()">
                             <span class="material-symbols-outlined" style="color: #10b981;">cloud_sync</span>
                             <span>Setting Google Sync</span>
@@ -130,42 +136,6 @@ $googleSyncCfg = getGoogleSyncConfig();
                     <p style="font-size: 0.8rem; color: #64748b; margin-top: 2px;" id="mainPageSub">
                         Pusat pemantauan rekaman video, verifikasi nomor resi, dan audit durasi kerja operator packing.
                     </p>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <!-- Tombol Sync dengan Google Drive Icon -->
-                    <button onclick="startBatchSync()" class="btn btn-primary btn-sm" id="btnSyncGoogle" style="background:#0284c7; border-color:#0284c7; display:inline-flex; align-items:center; gap:6px;" title="Sinkronkan data dan rekaman video sesuai filter ke Google Drive & Sheets">
-                        <svg width="18" height="18" viewBox="0 0 87.3 78" style="vertical-align: middle;">
-                          <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-                          <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
-                          <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
-                          <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-                          <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
-                          <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
-                        </svg>
-                        <span>Sync ke Google Sheet</span>
-                        <span class="badge" id="pendingSyncBadge" style="background:#f59e0b; color:#fff; display:none; padding:1px 7px; font-size:0.7rem; border-radius:10px; margin-left:2px;">0</span>
-                    </button>
-
-                    <!-- Tombol Export Excel dengan Icon Excel -->
-                    <button onclick="exportToExcel()" class="btn btn-sm" style="background:#107c41; color:#fff; border:1px solid #0e6c38; display:inline-flex; align-items:center; gap:6px;" title="Download Data ke Excel (.xls)">
-                        <svg width="17" height="17" viewBox="0 0 24 24" style="vertical-align: middle;">
-                          <path fill="#ffffff" d="M21.17 3.25H7.83A1.58 1.58 0 0 0 6.25 4.83v2.92h5.5a1.58 1.58 0 0 1 1.58 1.58v5.34a1.58 1.58 0 0 1-1.58 1.58h-5.5v2.92a1.58 1.58 0 0 0 1.58 1.58h13.34a1.58 1.58 0 0 0 1.58-1.58V4.83a1.58 1.58 0 0 0-1.58-1.58z"/>
-                          <path fill="#ffffff" opacity="0.9" d="M12.5 7.25H2.5A1.5 1.5 0 0 0 1 8.75v6.5A1.5 1.5 0 0 0 2.5 16.75h10a1.5 1.5 0 0 0 1.5-1.5v-6.5a1.5 1.5 0 0 0-1.5-1.5z"/>
-                          <path fill="#107c41" d="M4.6 9.2l1.6 2.8-1.6 2.8h1.4l.9-1.8.9 1.8h1.4l-1.6-2.8 1.6-2.8H9.4L8.4 11l-.9-1.8H6z"/>
-                        </svg>
-                        <span>Export Excel</span>
-                    </button>
-
-                    <button onclick="openGoogleSyncModal()" class="btn btn-outline btn-sm" title="Pengaturan Google Drive & Sheet">
-                        <span class="material-symbols-outlined" style="color:#10b981;">settings</span>
-                        <span>Setting Google</span>
-                    </button>
-
-                    <a href="packing.php" class="btn btn-outline btn-sm">
-                        <span class="material-symbols-outlined">videocam</span>
-                        <span>Layar Packing</span>
-                    </a>
                 </div>
             </div>
 
