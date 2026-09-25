@@ -6,11 +6,13 @@ requireLogin();
 $user = getCurrentUser();
 $db = getDB();
 $todayDate = date('Y-m-d');
+
+// Total packings today
 $stmtToday = $db->prepare("SELECT COUNT(*) as cnt FROM packings WHERE DATE(created_at) = ?");
 $stmtToday->execute([$todayDate]);
 $initialTodayCount = intval($stmtToday->fetch()['cnt'] ?? 0);
 
-// Pre-fetch recent packings for instant display without waiting for JS
+// Pre-fetch recent packings for instant zero-delay rendering
 $stmtRecent = $db->query("SELECT * FROM packings ORDER BY id DESC LIMIT 10");
 $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
 ?>
@@ -22,448 +24,31 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
     <title>Stasiun Kerja Packing - KOL Affiliate</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
-
-    <style>
-        /* ========================================================
-           CRITICAL WORKSTATION LAYOUT (IMMUNE TO BROWSER CACHE)
-           ======================================================== */
-        html, body.operator-body {
-            height: 100vh !important;
-            overflow: hidden !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background-color: #f1f5f9 !important;
-            font-family: 'Plus Jakarta Sans', sans-serif !important;
-            box-sizing: border-box !important;
-        }
-
-        .operator-screen {
-            height: 100vh !important;
-            display: flex !important;
-            flex-direction: column !important;
-            padding: 10px 14px !important;
-            gap: 10px !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-            width: 100% !important;
-        }
-
-        /* Top Header: Single Row Flex Bar */
-        .operator-header {
-            background: #ffffff !important;
-            border: 1px solid #e2e8f0 !important;
-            border-radius: 12px !important;
-            padding: 8px 16px !important;
-            display: flex !important;
-            flex-direction: row !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            gap: 14px !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
-            flex-shrink: 0 !important;
-            height: 58px !important;
-            box-sizing: border-box !important;
-            transition: all 0.25s ease !important;
-        }
-
-        .operator-header.recording-mode {
-            border-color: #f43f5e !important;
-            background: #fff5f7 !important;
-            box-shadow: 0 0 15px rgba(244, 63, 94, 0.2) !important;
-        }
-
-        .brand-area {
-            display: flex !important;
-            align-items: center !important;
-            gap: 10px !important;
-            flex-shrink: 0 !important;
-        }
-
-        .brand-badge {
-            width: 36px !important;
-            height: 36px !important;
-            border-radius: 9px !important;
-            background: #eff6ff !important;
-            border: 1px solid #bfdbfe !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            color: #2563eb !important;
-        }
-
-        .brand-title {
-            font-size: 0.95rem !important;
-            font-weight: 800 !important;
-            color: #0f172a !important;
-            line-height: 1.1 !important;
-            letter-spacing: -0.01em !important;
-        }
-
-        .brand-sub {
-            font-size: 0.68rem !important;
-            color: #64748b !important;
-            font-weight: 500 !important;
-        }
-
-        /* Central Scanner Input Box */
-        .scanner-box {
-            flex: 1 !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 10px !important;
-            max-width: 680px !important;
-        }
-
-        .scanner-field-wrapper {
-            position: relative !important;
-            flex: 1 !important;
-        }
-
-        .scanner-icon {
-            position: absolute !important;
-            left: 12px !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            color: #64748b !important;
-            display: flex !important;
-            align-items: center !important;
-            pointer-events: none !important;
-        }
-
-        .scanner-input {
-            width: 100% !important;
-            box-sizing: border-box !important;
-            background: #f8fafc !important;
-            border: 2px solid #cbd5e1 !important;
-            border-radius: 8px !important;
-            padding: 7px 12px 7px 38px !important;
-            font-size: 1.05rem !important;
-            font-family: 'JetBrains Mono', monospace !important;
-            font-weight: 700 !important;
-            color: #0f172a !important;
-            outline: none !important;
-            transition: all 0.2s ease !important;
-        }
-
-        .scanner-input:focus {
-            border-color: #2563eb !important;
-            background: #ffffff !important;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
-        }
-
-        .recording-mode .scanner-input:focus {
-            border-color: #e11d48 !important;
-            box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.15) !important;
-        }
-
-        .autofocus-chip {
-            font-size: 0.72rem !important;
-            background: #f1f5f9 !important;
-            border: 1px solid #cbd5e1 !important;
-            color: #475569 !important;
-            padding: 5px 9px !important;
-            border-radius: 6px !important;
-            font-weight: 600 !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 4px !important;
-            white-space: nowrap !important;
-            flex-shrink: 0 !important;
-        }
-
-        /* Operator Right Actions */
-        .operator-header-right {
-            display: flex !important;
-            align-items: center !important;
-            gap: 10px !important;
-            flex-shrink: 0 !important;
-        }
-
-        .user-pill {
-            display: flex !important;
-            align-items: center !important;
-            gap: 8px !important;
-            background: #f8fafc !important;
-            border: 1px solid #e2e8f0 !important;
-            padding: 4px 10px !important;
-            border-radius: 20px !important;
-        }
-
-        .user-pill-avatar {
-            width: 24px !important;
-            height: 24px !important;
-            border-radius: 50% !important;
-            background: #e2e8f0 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            color: #2563eb !important;
-        }
-
-        .user-pill-name {
-            font-size: 0.8rem !important;
-            font-weight: 700 !important;
-            color: #0f172a !important;
-            line-height: 1.1 !important;
-        }
-
-        .user-pill-role {
-            font-size: 0.6rem !important;
-            font-weight: 700 !important;
-            text-transform: uppercase !important;
-            padding: 1px 6px !important;
-            border-radius: 4px !important;
-            line-height: 1 !important;
-        }
-        .role-operator { background: #dcfce7 !important; color: #15803d !important; }
-        .role-admin { background: #f3e8ff !important; color: #7e22ce !important; }
-
-        .btn-header-logout {
-            border-color: #fecdd3 !important;
-            color: #e11d48 !important;
-            background: #ffffff !important;
-            text-decoration: none !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 4px !important;
-            padding: 5px 10px !important;
-            border-radius: 6px !important;
-            font-size: 0.8rem !important;
-            font-weight: 600 !important;
-            border: 1px solid #fecdd3 !important;
-        }
-        .btn-header-logout:hover {
-            background: #fff1f2 !important;
-            border-color: #fda4af !important;
-        }
-
-        .header-admin-btn {
-            border: 1px solid #d8b4fe !important;
-            color: #7c3aed !important;
-            background: #faf5ff !important;
-            font-weight: 600 !important;
-            font-size: 0.8rem !important;
-            padding: 5px 10px !important;
-            border-radius: 6px !important;
-            text-decoration: none !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 4px !important;
-        }
-        .header-admin-btn:hover {
-            background: #f3e8ff !important;
-        }
-
-        /* 2-Column Workstation Grid */
-        .operator-main-grid {
-            flex: 1 !important;
-            min-height: 0 !important;
-            display: grid !important;
-            grid-template-columns: minmax(0, 1fr) 380px !important;
-            gap: 12px !important;
-            align-items: stretch !important;
-            box-sizing: border-box !important;
-            width: 100% !important;
-            overflow: hidden !important;
-        }
-
-        @media (max-width: 1200px) {
-            .operator-main-grid {
-                grid-template-columns: minmax(0, 1fr) 330px !important;
-            }
-        }
-
-        .card {
-            background: #ffffff !important;
-            border: 1px solid #e2e8f0 !important;
-            border-radius: 12px !important;
-            display: flex !important;
-            flex-direction: column !important;
-            overflow: hidden !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
-            height: 100% !important;
-            box-sizing: border-box !important;
-        }
-
-        .camera-card {
-            min-width: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            overflow: hidden !important;
-            display: flex !important;
-            flex-direction: column !important;
-        }
-
-        .history-card {
-            min-width: 320px !important;
-            max-width: 400px !important;
-            width: 100% !important;
-            height: 100% !important;
-            overflow: hidden !important;
-            display: flex !important;
-            flex-direction: column !important;
-        }
-
-        .card-header {
-            padding: 8px 14px !important;
-            border-bottom: 1px solid #e2e8f0 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            background: #ffffff !important;
-            flex-shrink: 0 !important;
-        }
-
-        .card-body {
-            padding: 10px !important;
-            flex: 1 !important;
-            min-height: 0 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            box-sizing: border-box !important;
-        }
-
-        .camera-container {
-            min-width: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            flex: 1 !important;
-            position: relative !important;
-            background: #000000 !important;
-            border-radius: 8px !important;
-            overflow: hidden !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }
-
-        .camera-video {
-            width: 100% !important;
-            height: 100% !important;
-            max-width: 100% !important;
-            max-height: 100% !important;
-            object-fit: contain !important;
-        }
-
-        /* Today Counter Card Widget */
-        .today-counter-card {
-            background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%) !important;
-            border: 1px solid #bfdbfe !important;
-            border-radius: 8px !important;
-            padding: 10px 12px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            gap: 10px !important;
-            flex-shrink: 0 !important;
-        }
-
-        .today-counter-icon {
-            width: 42px !important;
-            height: 42px !important;
-            border-radius: 9px !important;
-            background: #2563eb !important;
-            color: #ffffff !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            flex-shrink: 0 !important;
-            box-shadow: 0 3px 8px rgba(37, 99, 235, 0.25) !important;
-        }
-
-        .today-counter-content {
-            flex: 1 !important;
-        }
-
-        .today-counter-label {
-            font-size: 0.65rem !important;
-            font-weight: 700 !important;
-            color: #1e40af !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.04em !important;
-            margin-bottom: 2px !important;
-        }
-
-        .today-counter-val-row {
-            display: flex !important;
-            align-items: baseline !important;
-            gap: 5px !important;
-        }
-
-        .today-counter-number {
-            font-family: 'JetBrains Mono', monospace !important;
-            font-size: 1.6rem !important;
-            font-weight: 800 !important;
-            color: #0f172a !important;
-            line-height: 1 !important;
-        }
-
-        .today-counter-unit {
-            font-size: 0.75rem !important;
-            font-weight: 600 !important;
-            color: #64748b !important;
-        }
-
-        .today-counter-badge {
-            display: flex !important;
-            align-items: center !important;
-            gap: 5px !important;
-            font-size: 0.62rem !important;
-            font-weight: 700 !important;
-            color: #059669 !important;
-            background: #ecfdf5 !important;
-            border: 1px solid #a7f3d0 !important;
-            padding: 2px 7px !important;
-            border-radius: 10px !important;
-        }
-
-        .badge-dot {
-            width: 6px !important;
-            height: 6px !important;
-            border-radius: 50% !important;
-            background: #10b981 !important;
-            display: inline-block !important;
-            animation: pulseGlow 1.5s infinite !important;
-        }
-
-        @keyframes pulseGlow {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.85); }
-        }
-
-        /* History List scroll */
-        .history-list {
-            flex: 1 !important;
-            min-height: 0 !important;
-            overflow-y: auto !important;
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 8px !important;
-            margin-top: 8px !important;
-            padding-right: 4px !important;
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
 </head>
 <body class="operator-body">
 
     <div class="operator-screen">
         
-        <!-- Header Atas: Brand + Scanner Barcode Input + Info Operator & Tombol Logout (Tanpa Sidebar) -->
+        <!-- ==========================================
+             TOP HEADER BAR (NO SIDEBAR - FULL WIDTH)
+             ========================================== -->
         <header class="operator-header" id="scannerBanner">
+            
+            <!-- Left: Brand Identity -->
             <div class="brand-area">
                 <div class="brand-badge">
                     <span class="material-symbols-outlined" style="font-size: 22px;">inventory_2</span>
                 </div>
                 <div>
                     <div class="brand-title">KOL PACKING</div>
-                    <div class="brand-sub">Auto Video Recorder</div>
+                    <div class="brand-sub">Auto Video Recorder & Audit</div>
                 </div>
             </div>
 
-            <!-- Central Scanner Field -->
+            <!-- Center: Barcode Scanner Hero Field -->
             <div class="scanner-box">
                 <div class="scanner-field-wrapper">
                     <div class="scanner-icon">
@@ -477,13 +62,13 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                            autofocus>
                 </div>
 
-                <button type="button" id="manualStopBtn" class="btn btn-success" style="display: none; padding: 0.55rem 1rem; white-space: nowrap;">
-                    <span class="material-symbols-outlined" style="font-size: 16px;">stop_circle</span>
+                <button type="button" id="manualStopBtn" class="btn btn-success" style="display: none; padding: 0.55rem 1rem;">
+                    <span class="material-symbols-outlined" style="font-size: 17px;">stop_circle</span>
                     <span>Selesai Packing</span>
                 </button>
 
-                <button type="button" id="cancelRecordBtn" class="btn btn-danger" style="display: none; padding: 0.55rem 0.9rem; white-space: nowrap;">
-                    <span class="material-symbols-outlined" style="font-size: 16px;">cancel</span>
+                <button type="button" id="cancelRecordBtn" class="btn btn-danger" style="display: none; padding: 0.55rem 0.9rem;">
+                    <span class="material-symbols-outlined" style="font-size: 17px;">cancel</span>
                     <span>Batal</span>
                 </button>
 
@@ -493,11 +78,11 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                 </span>
             </div>
 
-            <!-- Operator Profile & Action Controls -->
+            <!-- Right: Operator Profile & Actions -->
             <div class="operator-header-right">
                 <?php if ($user['role'] === 'admin'): ?>
                 <a href="admin" class="header-admin-btn" title="Buka Portal Admin">
-                    <span class="material-symbols-outlined" style="font-size: 16px; color: #7c3aed;">dashboard</span>
+                    <span class="material-symbols-outlined" style="font-size: 16px;">dashboard</span>
                     <span>Portal Admin</span>
                 </a>
                 <?php endif; ?>
@@ -506,7 +91,7 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                     <div class="user-pill-avatar">
                         <span class="material-symbols-outlined" style="font-size: 16px;">person</span>
                     </div>
-                    <div class="user-pill-text">
+                    <div>
                         <div class="user-pill-name"><?= htmlspecialchars($user['name']) ?></div>
                         <div class="user-pill-role <?= $user['role'] === 'admin' ? 'role-admin' : 'role-operator' ?>">
                             <?= strtoupper($user['role']) ?>
@@ -521,23 +106,25 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
             </div>
         </header>
 
-        <!-- Main Layout: 2 Kolom (Card Camera di kiri, Card Riwayat & Total Resi di kanan) -->
+        <!-- ==========================================
+             MAIN WORKSTATION GRID (2 COLUMNS)
+             ========================================== -->
         <main class="operator-main-grid">
             
-            <!-- Left Side: Camera Live Feed (Auto-Fit 100vh) -->
+            <!-- LEFT COLUMN: Live Camera Studio -->
             <div class="card camera-card">
                 <div class="card-header">
                     <div class="card-title">
-                        <span class="material-symbols-outlined" style="color: #2563eb;">videocam</span>
-                        <span>Live Feed Kamera Packing</span>
+                        <span class="material-symbols-outlined">videocam</span>
+                        <span>Feed Kamera Meja Packing</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="material-symbols-outlined" style="color: #64748b; font-size: 18px;">photo_camera</span>
-                        <select id="cameraSelect" class="select-input">
+                        <select id="cameraSelect" class="select-input" style="max-width: 260px;">
                             <option value="">Memuat perangkat kamera...</option>
                         </select>
 
-                        <select id="qualitySelect" class="select-input" title="Pilih Mode Penyimpanan" style="font-weight: 600; color: #2563eb; background: #eff6ff; border-color: #bfdbfe;">
+                        <select id="qualitySelect" class="select-input" title="Pilih Mode Penyimpanan" style="font-weight: 600; color: #2563eb; background: #eff6ff; border-color: #bfdbfe; max-width: 190px;">
                             <option value="saver" selected>⚡ Mode Hemat (~400 KB)</option>
                             <option value="hd">🎥 Mode HD (~1.4 MB)</option>
                         </select>
@@ -545,22 +132,23 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                 </div>
 
                 <div class="card-body">
-                    <!-- Auto-Resizing Camera Viewport (Never Cut Off) -->
+                    <!-- Cinema-Grade Matte Camera Viewport -->
                     <div class="camera-container">
                         <video id="cameraFeed" class="camera-video" autoplay playsinline muted></video>
                         
-                        <!-- Top Overlay -->
+                        <!-- Top HUD Overlay -->
                         <div class="camera-overlay-top">
                             <div class="status-indicator status-standby" id="statusBadge">
-                                <span class="rec-dot" style="background:#ffffff;"></span> STANDBY (SIAP SCAN)
+                                <span class="rec-dot"></span>
+                                <span id="statusBadgeText">STANDBY (SIAP SCAN)</span>
                             </div>
                             <div class="timer-box" id="timerDisplay">
-                                <span class="material-symbols-outlined" style="font-size: 16px; color: #cbd5e1;">timer</span>
+                                <span class="material-symbols-outlined" style="font-size: 16px; color: #94a3b8;">timer</span>
                                 <span>00:00:00</span>
                             </div>
                         </div>
 
-                        <!-- Bottom Overlay -->
+                        <!-- Bottom HUD Overlay -->
                         <div class="camera-overlay-bottom">
                             <div class="overlay-meta">
                                 <div id="overlayResi" class="meta-resi" style="display: none;"></div>
@@ -580,39 +168,40 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                         </div>
                     </div>
 
-                    <!-- Technical Footnote -->
+                    <!-- Footnote Metadata Bar -->
                     <div class="camera-footnote">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span class="material-symbols-outlined" style="font-size: 15px; color: #059669;">volume_up</span>
-                            <span>Audio Cue: <b>Aktif</b></span>
-                            <span>•</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">volume_up</span>
+                            <span>Audio Cue: <b style="color: #0f172a;">Aktif</b></span>
+                            <span style="color: #cbd5e1;">•</span>
                             <span class="material-symbols-outlined" style="font-size: 15px; color: #2563eb;">high_quality</span>
-                            <span>Format: <b>MP4 H.264 Auto-Compress</b></span>
+                            <span>Format: <b style="color: #0f172a;">MP4 H.264 Auto-Compress</b></span>
                         </div>
                         <div>
-                            Tekan <kbd style="background:#f1f5f9; padding:1px 5px; border-radius:4px; border:1px solid #cbd5e1; font-family:'JetBrains Mono';">Enter</kbd> otomatis via scanner fisik.
+                            Tekan <kbd style="background: #f1f5f9; padding: 1px 5px; border-radius: 4px; border: 1px solid #cbd5e1; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;">Enter</kbd> otomatis via scanner fisik.
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Side: Card Riwayat & Total Resi yang di scan -->
+            <!-- RIGHT COLUMN: Riwayat & Total Resi yang di-scan -->
             <div class="card history-card">
                 <div class="card-header">
                     <div class="card-title">
-                        <span class="material-symbols-outlined" style="color: #2563eb;">receipt_long</span>
-                        <span>Riwayat Hasil Packing</span>
+                        <span class="material-symbols-outlined">receipt_long</span>
+                        <span>Riwayat & Aktivitas Packing</span>
                     </div>
-                    <button class="btn btn-outline btn-sm" onclick="window.station.loadRecentHistory()" title="Segarkan Data">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">sync</span>
+                    <button class="btn btn-outline btn-sm btn-icon" onclick="window.station.loadRecentHistory()" title="Segarkan Data">
+                        <span class="material-symbols-outlined" style="font-size: 17px;">sync</span>
                     </button>
                 </div>
 
                 <div class="card-body" style="gap: 10px;">
-                    <!-- Stat Card: Total Resi Ter-scan Hari Ini -->
+                    
+                    <!-- HERO STAT CARD: Total Resi Ter-scan Hari Ini -->
                     <div class="today-counter-card">
                         <div class="today-counter-icon">
-                            <span class="material-symbols-outlined" style="font-size: 22px;">inventory_2</span>
+                            <span class="material-symbols-outlined" style="font-size: 24px;">inventory_2</span>
                         </div>
                         <div class="today-counter-content">
                             <div class="today-counter-label">TOTAL RESI TER-SCAN HARI INI</div>
@@ -627,17 +216,21 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                         </div>
                     </div>
 
-                    <!-- Header Riwayat -->
+                    <!-- Header List -->
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 2px 0;">
                         <span style="font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em;">Daftar Terakhir Di-Scan</span>
                         <span style="font-size: 0.7rem; color: #94a3b8;">10 Paket Terkini</span>
                     </div>
 
-                    <!-- Scrollable History List (Pre-rendered for zero delay) -->
+                    <!-- Scrollable History Feed (Pre-rendered from Server) -->
                     <div class="history-list" id="recentHistoryList">
                         <?php if (empty($recentPackings)): ?>
-                            <div style="text-align: center; color: #94a3b8; padding: 2rem 0; font-size: 0.85rem;">
-                                Belum ada rekaman paket.
+                            <div style="text-align: center; color: #94a3b8; padding: 2.5rem 1rem; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                <div style="width: 44px; height: 44px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: #94a3b8;">
+                                    <span class="material-symbols-outlined" style="font-size: 24px;">qr_code_scanner</span>
+                                </div>
+                                <div style="font-size: 0.86rem; font-weight: 600; color: #64748b;">Belum ada paket yang direkam</div>
+                                <div style="font-size: 0.76rem; color: #94a3b8; max-width: 220px; line-height: 1.3;">Arahkan scanner ke resi pertama untuk mulai merekam otomatis.</div>
                             </div>
                         <?php else: ?>
                             <?php foreach ($recentPackings as $item): ?>
@@ -651,20 +244,20 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                                 <div class="history-item">
                                     <div>
                                         <div class="history-resi"><?= htmlspecialchars($item['resi_no']) ?></div>
-                                        <div class="history-sub" style="display:flex; align-items:center; gap:4px;">
+                                        <div class="history-sub" style="display: flex; align-items: center; gap: 4px;">
                                             <span><?= $formattedDate ?></span>
                                             <span>•</span>
-                                            <span class="material-symbols-outlined" style="font-size:14px; color:#94a3b8;">timer</span>
+                                            <span class="material-symbols-outlined" style="font-size: 13px; color: #94a3b8;">timer</span>
                                             <span><?= $formattedDur ?></span>
                                         </div>
                                     </div>
-                                    <div style="display:flex; align-items:center; gap:6px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
                                         <span class="history-badge">MP4</span>
-                                        <button class="btn btn-outline btn-sm" onclick="window.previewVideo('<?= $videoUrl ?>', '<?= htmlspecialchars($item['resi_no']) ?>', <?= $item['id'] ?>)" title="Putar Video">
-                                            <span class="material-symbols-outlined" style="font-size:16px;">play_arrow</span>
+                                        <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo('<?= $videoUrl ?>', '<?= htmlspecialchars($item['resi_no']) ?>', <?= $item['id'] ?>)" title="Putar Video">
+                                            <span class="material-symbols-outlined" style="font-size: 17px; color: #2563eb;">play_arrow</span>
                                         </button>
-                                        <a href="download.php?id=<?= $item['id'] ?>" class="btn btn-outline btn-sm" title="Download MP4" download>
-                                            <span class="material-symbols-outlined" style="font-size:16px;">download</span>
+                                        <a href="download.php?id=<?= $item['id'] ?>" class="btn btn-outline btn-sm btn-icon" title="Download MP4" download>
+                                            <span class="material-symbols-outlined" style="font-size: 16px; color: #64748b;">download</span>
                                         </a>
                                     </div>
                                 </div>
@@ -677,32 +270,57 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
         </main>
     </div>
 
-    <!-- Modal Quick Video Preview -->
+    <!-- ==========================================
+         MODAL QUICK VIDEO PREVIEW WITH CONTROLS
+         ========================================== -->
     <div class="modal-overlay" id="videoModal">
         <div class="modal-content">
             <div class="modal-header">
                 <div style="font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
                     <span class="material-symbols-outlined" style="color: #2563eb;">movie</span>
-                    <span>Hasil Rekaman Video:</span>
+                    <span>Video Rekaman:</span>
                     <span id="modalResiTitle" style="color: #2563eb; font-family: 'JetBrains Mono', monospace;">-</span>
                 </div>
-                <button class="btn btn-outline btn-sm" onclick="closeVideoModal()">
+                <button class="btn btn-outline btn-sm btn-icon" onclick="closeVideoModal()">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
             <div class="modal-body">
                 <video id="modalVideoPlayer" class="modal-video-player" controls></video>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+
+                <!-- Speed playback controls -->
+                <div class="playback-controls">
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: #64748b;">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">speed</span>
+                        <span>Kecepatan Audit:</span>
+                    </div>
+                    <div class="speed-buttons">
+                        <button type="button" class="speed-btn active" onclick="setModalSpeed(1, this)">1x</button>
+                        <button type="button" class="speed-btn" onclick="setModalSpeed(1.25, this)">1.25x</button>
+                        <button type="button" class="speed-btn" onclick="setModalSpeed(1.5, this)">1.5x</button>
+                        <button type="button" class="speed-btn" onclick="setModalSpeed(2, this)">2x</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
                     <a id="modalPackingDownloadBtn" href="#" class="btn btn-primary btn-sm" download style="display: none;">
-                        <span class="material-symbols-outlined">download</span>
-                        <span>Download Video MP4</span>
+                        <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
+                        <span>Download MP4</span>
                     </a>
-                    <button class="btn btn-outline btn-sm" onclick="closeVideoModal()">Tutup Jendela</button>
+                    <button class="btn btn-outline btn-sm" onclick="closeVideoModal()" style="margin-left: auto;">Tutup</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="assets/js/packing.js?v=<?= time() ?>"></script>
+    <script src="assets/js/packing.js?v=<?= filemtime(__DIR__ . '/assets/js/packing.js') ?>"></script>
+    <script>
+        function setModalSpeed(speed, btn) {
+            const player = document.getElementById('modalVideoPlayer');
+            if (player) player.playbackRate = speed;
+            document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+        }
+    </script>
 </body>
 </html>
