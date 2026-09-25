@@ -9,6 +9,10 @@ $todayDate = date('Y-m-d');
 $stmtToday = $db->prepare("SELECT COUNT(*) as cnt FROM packings WHERE DATE(created_at) = ?");
 $stmtToday->execute([$todayDate]);
 $initialTodayCount = intval($stmtToday->fetch()['cnt'] ?? 0);
+
+// Pre-fetch recent packings for instant display without waiting for JS
+$stmtRecent = $db->query("SELECT * FROM packings ORDER BY id DESC LIMIT 10");
+$recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -44,6 +48,7 @@ $initialTodayCount = intval($stmtToday->fetch()['cnt'] ?? 0);
             gap: 10px !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
+            width: 100% !important;
         }
 
         /* Top Header: Single Row Flex Bar */
@@ -257,15 +262,17 @@ $initialTodayCount = intval($stmtToday->fetch()['cnt'] ?? 0);
             flex: 1 !important;
             min-height: 0 !important;
             display: grid !important;
-            grid-template-columns: 1fr 390px !important;
-            gap: 10px !important;
+            grid-template-columns: minmax(0, 1fr) 380px !important;
+            gap: 12px !important;
             align-items: stretch !important;
             box-sizing: border-box !important;
+            width: 100% !important;
+            overflow: hidden !important;
         }
 
-        @media (max-width: 1100px) {
+        @media (max-width: 1200px) {
             .operator-main-grid {
-                grid-template-columns: 1fr 320px !important;
+                grid-template-columns: minmax(0, 1fr) 330px !important;
             }
         }
 
@@ -279,6 +286,25 @@ $initialTodayCount = intval($stmtToday->fetch()['cnt'] ?? 0);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
             height: 100% !important;
             box-sizing: border-box !important;
+        }
+
+        .camera-card {
+            min-width: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        .history-card {
+            min-width: 320px !important;
+            max-width: 400px !important;
+            width: 100% !important;
+            height: 100% !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
         }
 
         .card-header {
@@ -298,6 +324,28 @@ $initialTodayCount = intval($stmtToday->fetch()['cnt'] ?? 0);
             display: flex !important;
             flex-direction: column !important;
             box-sizing: border-box !important;
+        }
+
+        .camera-container {
+            min-width: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            flex: 1 !important;
+            position: relative !important;
+            background: #000000 !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .camera-video {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            object-fit: contain !important;
         }
 
         /* Today Counter Card Widget */
@@ -585,11 +633,43 @@ $initialTodayCount = intval($stmtToday->fetch()['cnt'] ?? 0);
                         <span style="font-size: 0.7rem; color: #94a3b8;">10 Paket Terkini</span>
                     </div>
 
-                    <!-- Scrollable History List -->
+                    <!-- Scrollable History List (Pre-rendered for zero delay) -->
                     <div class="history-list" id="recentHistoryList">
-                        <div style="text-align: center; color: #94a3b8; padding: 2rem 0; font-size: 0.85rem;">
-                            Memuat riwayat...
-                        </div>
+                        <?php if (empty($recentPackings)): ?>
+                            <div style="text-align: center; color: #94a3b8; padding: 2rem 0; font-size: 0.85rem;">
+                                Belum ada rekaman paket.
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($recentPackings as $item): ?>
+                                <?php 
+                                    $videoUrl = 'uploads/videos/' . htmlspecialchars($item['video_filename']);
+                                    $durMin = floor($item['duration_seconds'] / 60);
+                                    $durSec = $item['duration_seconds'] % 60;
+                                    $formattedDur = sprintf('%02d:%02d', $durMin, $durSec);
+                                    $formattedDate = date('d/m/Y H:i', strtotime($item['created_at']));
+                                ?>
+                                <div class="history-item">
+                                    <div>
+                                        <div class="history-resi"><?= htmlspecialchars($item['resi_no']) ?></div>
+                                        <div class="history-sub" style="display:flex; align-items:center; gap:4px;">
+                                            <span><?= $formattedDate ?></span>
+                                            <span>•</span>
+                                            <span class="material-symbols-outlined" style="font-size:14px; color:#94a3b8;">timer</span>
+                                            <span><?= $formattedDur ?></span>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <span class="history-badge">MP4</span>
+                                        <button class="btn btn-outline btn-sm" onclick="window.previewVideo('<?= $videoUrl ?>', '<?= htmlspecialchars($item['resi_no']) ?>', <?= $item['id'] ?>)" title="Putar Video">
+                                            <span class="material-symbols-outlined" style="font-size:16px;">play_arrow</span>
+                                        </button>
+                                        <a href="download.php?id=<?= $item['id'] ?>" class="btn btn-outline btn-sm" title="Download MP4" download>
+                                            <span class="material-symbols-outlined" style="font-size:16px;">download</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

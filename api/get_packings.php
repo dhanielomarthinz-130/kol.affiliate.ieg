@@ -24,11 +24,8 @@ $offset = ($page - 1) * $limit;
 $whereClauses = [];
 $params = [];
 
-if ($currentUser['role'] === 'operator') {
-    // By default, operator can only see their own recent packings today
-    $whereClauses[] = "user_id = ?";
-    $params[] = $currentUser['id'];
-} else if ($operatorId > 0) {
+// Filter by operator only if explicitly specified
+if ($operatorId > 0) {
     $whereClauses[] = "user_id = ?";
     $params[] = $operatorId;
 }
