@@ -249,6 +249,16 @@ class PackingStation {
         }
 
         if (!this.isRecording) {
+            // ─── Cek in-memory: resi sedang dalam proses upload background?
+            this._pendingResi = this._pendingResi || new Set();
+            if (this._pendingResi.has(scannedCode.toLowerCase())) {
+                this.playSound('error');
+                this.showToast(`🚫 Resi ${scannedCode} masih dalam proses upload! Tunggu sebentar.`, 'warning');
+                this.resiInput.value = '';
+                this.focusInput();
+                return;
+            }
+
             // GUARD: Cegah 2 check duplikat berjalan bersamaan
             if (this._checkingDuplicate) {
                 this.resiInput.value = '';
@@ -269,7 +279,6 @@ class PackingStation {
             } catch (e) {
                 console.warn('Duplicate check failed, proceeding anyway:', e);
             } finally {
-                // Selalu reset flag ini agar scan berikutnya bisa jalan
                 this._checkingDuplicate = false;
             }
 
@@ -447,108 +456,118 @@ class PackingStation {
 
     async finishAndSaveRecording() {
         if (!this.isRecording || !this.mediaRecorder) return;
-        // Mencegah double-trigger (misal: tombol diklik 2x atau scan ganda)
         if (this.isSaving) return;
 
-        const endTime = new Date();
+        const endTime    = new Date();
         const durationSec = Math.max(1, Math.round((endTime - this.startTime) / 1000));
-        const resiToSave = this.currentResi;
-        const formattedStartTime = this.formatDateTime(this.startTime);
-        const formattedEndTime = this.formatDateTime(endTime);
+        const resiToSave  = this.currentResi;
+        const startStr    = this.formatDateTime(this.startTime);
+        const endStr      = this.formatDateTime(endTime);
 
-        // Set flag isSaving SEBELUM proses apapun
+        // Kunci singkat: hanya saat kumpul blob (< 200ms)
         this.isSaving = true;
 
         this.statusBadge.className = 'status-indicator';
         this.statusBadge.style.background = '#eab308';
-        this.statusBadge.textContent = '⏳ Menyimpan Video...';
-
-        // Sembunyikan tombol stop/batal agar tidak bisa diklik lagi
-        if (this.manualStopBtn) this.manualStopBtn.style.display = 'none';
+        this.statusBadge.textContent = '⚡ Memproses...';
+        if (this.manualStopBtn)  this.manualStopBtn.style.display  = 'none';
         if (this.cancelRecordBtn) this.cancelRecordBtn.style.display = 'none';
 
-        // Stop media recorder and wait for chunks
-        const blobPromise = new Promise((resolve) => {
+        // ─── STEP 1: Kumpul semua chunk jadi blob (sangat cepat) ─────────────
+        const videoBlob = await new Promise((resolve) => {
             this.mediaRecorder.onstop = () => {
-                const mimeType = this.mediaRecorder.mimeType || 'video/webm';
-                const blob = new Blob(this.recordedChunks, { type: mimeType });
-                resolve(blob);
+                const mime = this.mediaRecorder.mimeType || 'video/webm';
+                resolve(new Blob(this.recordedChunks, { type: mime }));
             };
             this.mediaRecorder.stop();
         });
 
-        const videoBlob = await blobPromise;
+        // ─── STEP 2: Update UI ke STANDBY SEKARANG ───────────────────────────
         this.isRecording = false;
         this.updateUIRecordingState(false);
 
-        // Tampilkan status kompresi di badge
-        this.statusBadge.className = 'status-indicator';
-        this.statusBadge.style.background = '#7c3aed';
-        this.statusBadge.textContent = `⚙️ Kompresi & Upload Resi ${resiToSave}...`;
+        // Buat blob URL lokal untuk preview video sebelum server selesai
+        const localUrl = URL.createObjectURL(videoBlob);
 
-        // Upload to server
-        const qualitySelect = document.getElementById('qualitySelect');
-        const qualityMode = qualitySelect ? qualitySelect.value : 'saver';
+        // Tandai resi sedang upload (untuk cegah duplikat saat background upload)
+        this._pendingResi = this._pendingResi || new Set();
+        this._pendingResi.add(resiToSave.toLowerCase());
 
-        const formData = new FormData();
-        formData.append('resi_no', resiToSave);
-        formData.append('video', videoBlob, `${resiToSave}.webm`);
-        formData.append('start_time', formattedStartTime);
-        formData.append('end_time', formattedEndTime);
-        formData.append('duration_seconds', durationSec);
-        formData.append('quality_mode', qualityMode);
+        // Ganti card ON PROCESS → card selesai LANGSUNG dengan local blob URL
+        this.replaceProgressWithDone(
+            { resi_no: resiToSave, video_url: localUrl, id: null },
+            durationSec
+        );
 
+        // Increment counter hari ini langsung
+        const todayEl = document.getElementById('todayTotalCount');
+        if (todayEl) {
+            todayEl.textContent = (parseInt(todayEl.textContent, 10) || 0) + 1;
+            todayEl.classList.add('counter-bump');
+            setTimeout(() => todayEl.classList.remove('counter-bump'), 400);
+        }
+
+        // Suara sukses & toast
+        this.playSound('success');
+        this.showToast(`✅ Resi ${resiToSave} selesai (${durationSec} dtk) — mengupload di background...`, 'success');
+
+        // Reset isSaving & badge — OPERATOR BISA SCAN BERIKUTNYA SEKARANG
+        this.isSaving = false;
+        this.statusBadge.style.background = '';
+        this.statusBadge.className = 'status-indicator status-standby';
+        this.statusBadge.innerHTML = '<span class="rec-dot"></span> STANDBY (SIAP SCAN)';
         this.resiInput.value = '';
         this.focusInput();
 
+        // ─── STEP 3: Upload ke server di background (tidak memblokir UI) ─────
+        const qualityMode = document.getElementById('qualitySelect')?.value || 'saver';
+        const formData = new FormData();
+        formData.append('resi_no',          resiToSave);
+        formData.append('video',            videoBlob, `${resiToSave}.webm`);
+        formData.append('start_time',       startStr);
+        formData.append('end_time',         endStr);
+        formData.append('duration_seconds', durationSec);
+        formData.append('quality_mode',     qualityMode);
+
+        // Fire and forget — tidak di-await
+        this._uploadInBackground(formData, localUrl, resiToSave, durationSec);
+    }
+
+    // Upload video ke server di background, tidak memblokir UI sama sekali
+    async _uploadInBackground(formData, localUrl, resi, durationSec) {
         try {
             const response = await fetch('api/save_packing.php', {
                 method: 'POST',
                 body: formData
             });
-
             const result = await response.json();
 
-            if (result.success) {
-                this.playSound('success');
-                this.showToast(`✅ Berhasil! Video resi ${resiToSave} tersimpan (${durationSec} detik)`, 'success');
-
-                // LANGSUNG ganti card ON PROCESS dengan card selesai di posisi yang sama
-                if (result.data) {
-                    this.replaceProgressWithDone(result.data, durationSec);
-                } else {
-                    this.removeProgressCard();
+            if (result.success && result.data) {
+                // Update tombol play di done-card dengan URL server yang asli
+                const doneCard = document.getElementById('donePackingCard');
+                if (doneCard) {
+                    const btn = doneCard.querySelector('button[onclick*="previewVideo"]');
+                    if (btn && result.data.video_url) {
+                        btn.setAttribute('onclick',
+                            `window.previewVideo('${result.data.video_url}', '${this.escapeHtml(resi)}', ${result.data.id})`
+                        );
+                    }
+                    doneCard.dataset.serverId = result.data.id;
                 }
-
-                // Increment counter today langsung (optimistic)
-                const todayEl = document.getElementById('todayTotalCount');
-                if (todayEl) {
-                    const current = parseInt(todayEl.textContent, 10) || 0;
-                    todayEl.textContent = current + 1;
-                    todayEl.classList.add('counter-bump');
-                    setTimeout(() => todayEl.classList.remove('counter-bump'), 400);
-                }
-
-                // Reload history dari server untuk data akurat (langsung, tanpa delay)
-                this.loadRecentHistory();
-            } else {
-                this.playSound('error');
-                this.showToast(`❌ Gagal menyimpan: ${result.message}`, 'error');
-                // Hapus progress card juga saat gagal
-                this.removeProgressCard();
+            } else if (!result.success) {
+                // Upload gagal — tunjukkan error kecil, bukan interrupt
+                this.showToast(`⚠️ Upload gagal: ${result.message}`, 'error');
             }
         } catch (err) {
-            console.error('Upload error:', err);
-            this.playSound('error');
-            this.showToast(`❌ Terjadi kesalahan jaringan saat upload video.`, 'error');
-            this.removeProgressCard();
+            console.error('Background upload error:', err);
+            this.showToast('⚠️ Gagal terhubung ke server. Coba refresh halaman.', 'error');
         } finally {
-            // Selalu reset isSaving agar scan berikutnya bisa berjalan normal
-            this.isSaving = false;
-            // Kembalikan badge ke standby
-            this.statusBadge.style.background = '';
-            this.statusBadge.className = 'status-indicator status-standby';
-            this.statusBadge.innerHTML = '<span class="rec-dot"></span> STANDBY (SIAP SCAN)';
+            // Cleanup blob URL memori
+            URL.revokeObjectURL(localUrl);
+            // Hapus dari set pending
+            this._pendingResi?.delete(resi.toLowerCase());
+            // Reload history dari server untuk data akurat
+            this.loadRecentHistory();
         }
     }
 
