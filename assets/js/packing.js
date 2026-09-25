@@ -18,6 +18,7 @@ class PackingStation {
         this.mediaRecorder = null;
         this.recordedChunks = [];
         this.isRecording = false;
+        this.isSaving = false; // Guard: mencegah double-submit saat sedang upload/kompresi
         this.currentResi = '';
         this.startTime = null;
         this.timerInterval = null;
@@ -201,7 +202,7 @@ class PackingStation {
         // Manual Stop Button
         if (this.manualStopBtn) {
             this.manualStopBtn.addEventListener('click', () => {
-                if (this.isRecording) {
+                if (this.isRecording && !this.isSaving) {
                     this.finishAndSaveRecording();
                 }
             });
@@ -237,6 +238,13 @@ class PackingStation {
         if (!this.stream) {
             this.showToast('Kamera belum aktif!', 'error');
             this.playSound('error');
+            return;
+        }
+
+        // GUARD: Sedang proses upload/kompresi ke server, abaikan scan apapun
+        if (this.isSaving) {
+            this.showToast('⏳ Sedang menyimpan video... Tunggu sebentar.', 'warning');
+            this.resiInput.value = '';
             return;
         }
 
@@ -377,6 +385,8 @@ class PackingStation {
 
     async finishAndSaveRecording() {
         if (!this.isRecording || !this.mediaRecorder) return;
+        // Mencegah double-trigger (misal: tombol diklik 2x atau scan ganda)
+        if (this.isSaving) return;
 
         const endTime = new Date();
         const durationSec = Math.max(1, Math.round((endTime - this.startTime) / 1000));
@@ -384,9 +394,16 @@ class PackingStation {
         const formattedStartTime = this.formatDateTime(this.startTime);
         const formattedEndTime = this.formatDateTime(endTime);
 
+        // Set flag isSaving SEBELUM proses apapun
+        this.isSaving = true;
+
         this.statusBadge.className = 'status-indicator';
         this.statusBadge.style.background = '#eab308';
         this.statusBadge.textContent = '⏳ Menyimpan Video...';
+
+        // Sembunyikan tombol stop/batal agar tidak bisa diklik lagi
+        if (this.manualStopBtn) this.manualStopBtn.style.display = 'none';
+        if (this.cancelRecordBtn) this.cancelRecordBtn.style.display = 'none';
 
         // Stop media recorder and wait for chunks
         const blobPromise = new Promise((resolve) => {
@@ -401,6 +418,11 @@ class PackingStation {
         const videoBlob = await blobPromise;
         this.isRecording = false;
         this.updateUIRecordingState(false);
+
+        // Tampilkan status kompresi di badge
+        this.statusBadge.className = 'status-indicator';
+        this.statusBadge.style.background = '#7c3aed';
+        this.statusBadge.textContent = `⚙️ Kompresi & Upload Resi ${resiToSave}...`;
 
         // Upload to server
         const qualitySelect = document.getElementById('qualitySelect');
@@ -437,6 +459,13 @@ class PackingStation {
             console.error('Upload error:', err);
             this.playSound('error');
             this.showToast(`❌ Terjadi kesalahan jaringan saat upload video.`, 'error');
+        } finally {
+            // Selalu reset isSaving agar scan berikutnya bisa berjalan normal
+            this.isSaving = false;
+            // Kembalikan badge ke standby
+            this.statusBadge.style.background = '';
+            this.statusBadge.className = 'status-indicator status-standby';
+            this.statusBadge.innerHTML = '<span class="rec-dot"></span> STANDBY (SIAP SCAN)';
         }
     }
 
@@ -497,9 +526,6 @@ class PackingStation {
                     <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo('${item.video_url}', '${item.resi_no}', ${item.id})" title="Putar Video">
                         <span class="material-symbols-outlined" style="font-size: 17px; color: #2563eb;">play_arrow</span>
                     </button>
-                    <a href="download.php?id=${item.id}" class="btn btn-outline btn-sm btn-icon" title="Download MP4" download>
-                        <span class="material-symbols-outlined" style="font-size: 16px; color: #64748b;">download</span>
-                    </a>
                 </div>
             </div>
         `).join('');

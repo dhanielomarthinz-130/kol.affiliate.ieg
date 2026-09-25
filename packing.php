@@ -255,9 +255,6 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                                         <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo('<?= $videoUrl ?>', '<?= htmlspecialchars($item['resi_no']) ?>', <?= $item['id'] ?>)" title="Putar Video">
                                             <span class="material-symbols-outlined" style="font-size: 17px; color: #2563eb;">play_arrow</span>
                                         </button>
-                                        <a href="download.php?id=<?= $item['id'] ?>" class="btn btn-outline btn-sm btn-icon" title="Download MP4" download>
-                                            <span class="material-symbols-outlined" style="font-size: 16px; color: #64748b;">download</span>
-                                        </a>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
