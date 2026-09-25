@@ -454,7 +454,9 @@ class PackingStation {
     async loadRecentHistory() {
         if (!this.historyList) return;
         try {
-            const res = await fetch('api/get_packings.php?limit=10');
+            const res = await fetch('api/get_packings.php?limit=10&_t=' + Date.now(), {
+                cache: 'no-store'
+            });
             const data = await res.json();
             if (data.success) {
                 if (data.today_total !== undefined) {
@@ -491,13 +493,12 @@ class PackingStation {
                         <span>${item.formatted_duration}</span>
                     </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:6px;">
-                    <span class="history-badge">MP4</span>
-                    <button class="btn btn-outline btn-sm" onclick="window.previewVideo('${item.video_url}', '${item.resi_no}', ${item.id})" title="Putar Video">
-                        <span class="material-symbols-outlined" style="font-size:16px;">play_arrow</span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo('${item.video_url}', '${item.resi_no}', ${item.id})" title="Putar Video">
+                        <span class="material-symbols-outlined" style="font-size: 17px; color: #2563eb;">play_arrow</span>
                     </button>
-                    <a href="download.php?id=${item.id}" class="btn btn-outline btn-sm" title="Download MP4" download>
-                        <span class="material-symbols-outlined" style="font-size:16px;">download</span>
+                    <a href="download.php?id=${item.id}" class="btn btn-outline btn-sm btn-icon" title="Download MP4" download>
+                        <span class="material-symbols-outlined" style="font-size: 16px; color: #64748b;">download</span>
                     </a>
                 </div>
             </div>

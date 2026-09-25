@@ -1,7 +1,10 @@
 <?php
 // api/save_packing.php
 header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 require_once __DIR__ . '/../config/auth.php';
+date_default_timezone_set('Asia/Jakarta');
 
 if (!isLoggedIn()) {
     http_response_code(401);
@@ -72,7 +75,9 @@ if (!$ffmpegBin || !file_exists($ffmpegBin)) {
 $isCompressed = false;
 $finalFileSize = $rawFileSize;
 
-if (function_exists('exec')) {
+$canExec = function_exists('exec') && !in_array('exec', array_map('trim', explode(',', (string)ini_get('disable_functions'))));
+
+if ($canExec) {
     $qualityMode = trim($_POST['quality_mode'] ?? 'saver');
     $crf = ($qualityMode === 'saver') ? '28' : '25';
     $audioBitrate = ($qualityMode === 'saver') ? '32k' : '64k';
@@ -117,23 +122,26 @@ if (!$isCompressed) {
 
 try {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO packings 
-        (resi_no, user_id, operator_name, start_time, end_time, duration_seconds, video_filename, video_filesize, notes) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    
+    $nowWib = date('Y-m-d H:i:s');
     if (empty($startTime)) $startTime = date('Y-m-d H:i:s', time() - $duration);
-    if (empty($endTime)) $endTime = date('Y-m-d H:i:s');
+    if (empty($endTime)) $endTime = $nowWib;
+    $userId = !empty($currentUser['id']) ? intval($currentUser['id']) : null;
 
+    $stmt = $db->prepare("INSERT INTO packings 
+        (resi_no, user_id, operator_name, start_time, end_time, duration_seconds, video_filename, video_filesize, notes, created_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    
     $stmt->execute([
         $resiNo,
-        $currentUser['id'],
+        $userId,
         $currentUser['name'],
         $startTime,
         $endTime,
         $duration,
         $finalFilename,
         $finalFileSize,
-        $notes
+        $notes,
+        $nowWib
     ]);
 
     $insertId = $db->lastInsertId();

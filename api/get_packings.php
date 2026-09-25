@@ -1,7 +1,10 @@
 <?php
 // api/get_packings.php
 header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 require_once __DIR__ . '/../config/auth.php';
+date_default_timezone_set('Asia/Jakarta');
 
 if (!isLoggedIn()) {
     http_response_code(401);

@@ -1,10 +1,11 @@
 <?php
 // config/database.php
 
+date_default_timezone_set('Asia/Jakarta');
+
 define('DB_SQLITE_FILE', __DIR__ . '/../database/kol_packing.sqlite');
 
 // MySQL InfinityFree Configuration
-define('DB_MYSQL_HOST', 'sql202.infinityfree.com');
 define('DB_MYSQL_NAME', 'if0_38464190_iegkolaffiliate');
 define('DB_MYSQL_USER', 'if0_38464190');
 define('DB_MYSQL_PASS', 'Dhaniel0');
@@ -15,35 +16,44 @@ function getDB() {
         return $db;
     }
 
-    // Detect if running on InfinityFree or remote server by checking hostname / environment
+    $httpHost = strtolower($_SERVER['HTTP_HOST'] ?? '');
+
+    // Detect if running on InfinityFree remote web hosting
     $isInfinityFree = (
-        isset($_SERVER['HTTP_HOST']) && (
-            strpos($_SERVER['HTTP_HOST'], 'great-site.net') !== false ||
-            strpos($_SERVER['HTTP_HOST'], 'xo.je') !== false ||
-            strpos($_SERVER['HTTP_HOST'], 'rf.gd') !== false ||
-            strpos($_SERVER['HTTP_HOST'], 'infinityfree') !== false ||
-            strpos($_SERVER['HTTP_HOST'], '42web.io') !== false ||
-            strpos($_SERVER['HTTP_HOST'], 'epizy.com') !== false ||
-            strpos($_SERVER['HTTP_HOST'], 'page.gd') !== false ||
-            strpos($_SERVER['HTTP_HOST'], 'infy.uk') !== false ||
-            (!in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1']) && strpos($_SERVER['HTTP_HOST'], 'localhost:') === false)
-        )
+        strpos($httpHost, 'great-site.net') !== false ||
+        strpos($httpHost, 'xo.je') !== false ||
+        strpos($httpHost, 'rf.gd') !== false ||
+        strpos($httpHost, 'infinityfree') !== false ||
+        strpos($httpHost, '42web.io') !== false ||
+        strpos($httpHost, 'epizy.com') !== false ||
+        strpos($httpHost, 'page.gd') !== false ||
+        strpos($httpHost, 'infy.uk') !== false
     );
 
-    // Try MySQL first if on InfinityFree, otherwise try SQLite or fallback
+    // Try MySQL first if on InfinityFree
     if ($isInfinityFree) {
-        try {
-            $dsn = "mysql:host=" . DB_MYSQL_HOST . ";dbname=" . DB_MYSQL_NAME . ";charset=utf8mb4";
-            $db = new PDO($dsn, DB_MYSQL_USER, DB_MYSQL_PASS, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_TIMEOUT => 5
-            ]);
-            initMySQL($db);
-            return $db;
-        } catch (Exception $e) {
-            error_log("MySQL connection failed: " . $e->getMessage());
-            // fallback to sqlite if needed
+        $candidateHosts = [
+            'sql202.byetcluster.com',
+            'sql202.epizy.com',
+            'sql202.infinityfree.com',
+            '127.0.0.1',
+            'localhost'
+        ];
+
+        foreach ($candidateHosts as $host) {
+            try {
+                $dsn = "mysql:host={$host};dbname=" . DB_MYSQL_NAME . ";charset=utf8mb4";
+                $db = new PDO($dsn, DB_MYSQL_USER, DB_MYSQL_PASS, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_TIMEOUT => 4
+                ]);
+                $db->exec("SET time_zone = '+07:00'");
+                initMySQL($db);
+                return $db;
+            } catch (Exception $e) {
+                error_log("MySQL connection failed on {$host}: " . $e->getMessage());
+            }
         }
     }
 

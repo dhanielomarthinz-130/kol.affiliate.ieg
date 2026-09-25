@@ -1,5 +1,8 @@
 <?php
 // packing.php
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+date_default_timezone_set('Asia/Jakarta');
 require_once __DIR__ . '/config/auth.php';
 requireLogin();
 
@@ -124,14 +127,10 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="material-symbols-outlined" style="color: #64748b; font-size: 18px;">photo_camera</span>
-                        <select id="cameraSelect" class="select-input" style="max-width: 260px;">
+                        <select id="cameraSelect" class="select-input" style="max-width: 280px;">
                             <option value="">Memuat perangkat kamera...</option>
                         </select>
-
-                        <select id="qualitySelect" class="select-input" title="Pilih Mode Penyimpanan" style="font-weight: 600; color: #2563eb; background: #eff6ff; border-color: #bfdbfe; max-width: 190px;">
-                            <option value="saver" selected>⚡ Mode Hemat (~400 KB)</option>
-                            <option value="hd">🎥 Mode HD (~1.4 MB)</option>
-                        </select>
+                        <input type="hidden" id="qualitySelect" value="saver">
                     </div>
                 </div>
 
@@ -177,9 +176,6 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">volume_up</span>
                             <span>Audio Cue: <b style="color: #0f172a;">Aktif</b></span>
-                            <span style="color: #cbd5e1;">•</span>
-                            <span class="material-symbols-outlined" style="font-size: 15px; color: #2563eb;">high_quality</span>
-                            <span>Format: <b style="color: #0f172a;">MP4 H.264 Auto-Compress</b></span>
                         </div>
                         <div>
                             Tekan <kbd style="background: #f1f5f9; padding: 1px 5px; border-radius: 4px; border: 1px solid #cbd5e1; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;">Enter</kbd> otomatis via scanner fisik.
@@ -256,7 +252,6 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                                         </div>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span class="history-badge">MP4</span>
                                         <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo('<?= $videoUrl ?>', '<?= htmlspecialchars($item['resi_no']) ?>', <?= $item['id'] ?>)" title="Putar Video">
                                             <span class="material-symbols-outlined" style="font-size: 17px; color: #2563eb;">play_arrow</span>
                                         </button>

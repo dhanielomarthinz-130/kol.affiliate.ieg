@@ -41,59 +41,130 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="login-page">
 
     <div class="login-card">
-        <div style="text-align: center; margin-bottom: 1.75rem;">
-            <div class="sidebar-brand-icon" style="width: 44px; height: 44px; margin: 0 auto 12px; border-radius: 10px;">
-                <span class="material-symbols-outlined" style="font-size: 24px;">inventory_2</span>
+        <!-- Brand Header -->
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div class="login-brand-icon">
+                <span class="material-symbols-outlined" style="font-size: 26px;">inventory_2</span>
             </div>
-            <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">KOL PACKING STATION</h1>
-            <p style="color: #64748b; font-size: 0.78rem; margin-top: 3px;">Perekaman & Audit Otomatis Video Hasil Packaging</p>
+            <h1 class="login-title">KOL PACKING</h1>
+            <p class="login-subtitle">Perekaman & Audit Otomatis Video Packaging</p>
+            <div>
+                <span class="login-badge-status">
+                    <span class="login-status-dot"></span>
+                    <span>Sistem Siap Operasi</span>
+                </span>
+            </div>
         </div>
 
         <?php if (!empty($error)): ?>
-            <div style="background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 9px 12px; border-radius: 6px; margin-bottom: 1.25rem; font-size: 0.82rem; display: flex; align-items: center; gap: 8px;">
-                <span class="material-symbols-outlined" style="font-size: 17px; color: #dc2626;">error</span>
+            <div class="login-error-alert">
+                <span class="material-symbols-outlined" style="font-size: 18px; color: #ef4444;">error</span>
                 <span><?= htmlspecialchars($error) ?></span>
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="login">
-            <div class="form-group">
-                <label class="form-label">Username</label>
-                <input type="text" name="username" id="inputUsername" class="form-control" placeholder="Masukkan username akun" required autofocus>
+        <!-- Form -->
+        <form method="POST" action="login" id="loginForm">
+            <div class="login-form-group">
+                <label class="login-label" for="inputUsername">Username Akun</label>
+                <div class="login-input-box">
+                    <span class="material-symbols-outlined login-input-icon">person</span>
+                    <input type="text" 
+                           name="username" 
+                           id="inputUsername" 
+                           class="login-input" 
+                           placeholder="Ketik username akun" 
+                           required 
+                           autofocus 
+                           autocomplete="username">
+                </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Password</label>
-                <input type="password" name="password" id="inputPassword" class="form-control" placeholder="Masukkan password" required>
+            <div class="login-form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                    <label class="login-label" for="inputPassword" style="margin-bottom: 0;">Password</label>
+                </div>
+                <div class="login-input-box">
+                    <span class="material-symbols-outlined login-input-icon">lock</span>
+                    <input type="password" 
+                           name="password" 
+                           id="inputPassword" 
+                           class="login-input" 
+                           placeholder="Ketik password" 
+                           required 
+                           autocomplete="current-password">
+                    <button type="button" 
+                            class="login-pwd-toggle" 
+                            id="togglePasswordBtn" 
+                            onclick="togglePasswordVisibility()" 
+                            title="Tampilkan / Sembunyikan Password"
+                            tabindex="-1">
+                        <span class="material-symbols-outlined" id="eyeIcon" style="font-size: 18px;">visibility</span>
+                    </button>
+                </div>
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 0.92rem; margin-top: 0.5rem;">
+            <button type="submit" class="login-submit-btn" id="submitBtn">
                 <span>Masuk ke Sistem</span>
-                <span class="material-symbols-outlined" style="font-size: 17px;">arrow_forward</span>
+                <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
             </button>
         </form>
 
-        <div class="demo-accounts">
-            <div style="font-weight: 700; font-size: 0.72rem; margin-bottom: 8px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em;">
-                Akun Cepat (Klik untuk isi):
+        <!-- Quick Demo Accounts -->
+        <div class="login-demo-section">
+            <div class="login-demo-title">
+                <span class="material-symbols-outlined" style="font-size: 14px; color: #60a5fa;">touch_app</span>
+                <span>Akses Cepat (Klik untuk Mengisi):</span>
             </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <span class="account-pill" onclick="fillLogin('operator', 'operator123')">
-                    <span class="material-symbols-outlined" style="font-size: 14px; color: #64748b;">badge</span>
-                    <span>Operator: <b>operator</b></span>
-                </span>
-                <span class="account-pill" onclick="fillLogin('admin', 'admin123')">
-                    <span class="material-symbols-outlined" style="font-size: 14px; color: #64748b;">shield_person</span>
-                    <span>Admin: <b>admin</b></span>
-                </span>
+            <div class="login-demo-grid">
+                <div class="login-quick-card" onclick="fillLogin('operator', 'operator123')">
+                    <div class="login-quick-avatar operator">
+                        <span class="material-symbols-outlined">badge</span>
+                    </div>
+                    <div class="login-quick-info">
+                        <div class="login-quick-name">Operator</div>
+                        <div class="login-quick-role">operator</div>
+                    </div>
+                </div>
+
+                <div class="login-quick-card" onclick="fillLogin('admin', 'admin123')">
+                    <div class="login-quick-avatar admin">
+                        <span class="material-symbols-outlined">shield_person</span>
+                    </div>
+                    <div class="login-quick-info">
+                        <div class="login-quick-name">Admin</div>
+                        <div class="login-quick-role">admin</div>
+                    </div>
+                </div>
             </div>
+        </div>
+
+        <!-- Security footer -->
+        <div class="login-footer-meta">
+            <span class="material-symbols-outlined" style="font-size: 14px; color: #10b981;">verified_user</span>
+            <span>Local Encrypted Session • Zero Data Leak</span>
         </div>
     </div>
 
     <script>
         function fillLogin(user, pass) {
-            document.getElementById('inputUsername').value = user;
-            document.getElementById('inputPassword').value = pass;
+            const userInput = document.getElementById('inputUsername');
+            const passInput = document.getElementById('inputPassword');
+            userInput.value = user;
+            passInput.value = pass;
+            userInput.focus();
+        }
+
+        function togglePasswordVisibility() {
+            const passInput = document.getElementById('inputPassword');
+            const eyeIcon = document.getElementById('eyeIcon');
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                eyeIcon.textContent = 'visibility_off';
+            } else {
+                passInput.type = 'password';
+                eyeIcon.textContent = 'visibility';
+            }
         }
     </script>
 </body>
