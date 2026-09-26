@@ -597,8 +597,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Mode Switcher Tabs -->
             <div class="login-nav-tabs">
                 <button type="button" class="login-tab-btn active" id="tabStandard" onclick="switchLoginMode('standard')">
-                    <span class="material-symbols-outlined tab-ico">key</span>
-                    <span>Password Akun</span>
+                    <span class="material-symbols-outlined tab-ico">admin_panel_settings</span>
+                    <span>Password Admin</span>
                 </button>
                 <button type="button" class="login-tab-btn" id="tabPin" onclick="switchLoginMode('pin')">
                     <span class="material-symbols-outlined tab-ico">pin</span>
@@ -627,7 +627,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="login-form-group">
-                    <label class="login-form-label" for="inputPassword">Password atau PIN</label>
+                    <label class="login-form-label" for="inputPassword">Password</label>
                     <div class="login-input-wrap">
                         <span class="material-symbols-outlined login-input-icon">lock</span>
                         <input
@@ -635,7 +635,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             name="password"
                             id="inputPassword"
                             class="login-form-input"
-                            placeholder="Masukkan password atau PIN..."
+                            placeholder="Masukkan password akun..."
                             required
                             autocomplete="current-password"
                             style="padding-right: 2.85rem;"
@@ -720,10 +720,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <!-- Security Footer -->
         <div class="login-footer">
-            <div class="login-footer-security">
-                <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">lock</span>
-                <span>Enkripsi 256-Bit SSL • Aman &amp; Terlindungi</span>
-            </div>
             <div class="login-footer-copy">© 2026 Dhanielo-Marthinz | IMS</div>
         </div>
     </div>
