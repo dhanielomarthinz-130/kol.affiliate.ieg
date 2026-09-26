@@ -68,6 +68,8 @@ function getDB() {
     $db = new PDO('sqlite:' . DB_SQLITE_FILE);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $db->exec('PRAGMA busy_timeout = 10000;');
+    $db->exec('PRAGMA journal_mode = WAL;');
 
     if ($isNew || filesize(DB_SQLITE_FILE) === 0) {
         initSQLite($db);
@@ -84,6 +86,7 @@ function initMySQL($db) {
         id INT AUTO_INCREMENT PRIMARY KEY,
         username VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
+        pin VARCHAR(255) NULL DEFAULT NULL,
         name VARCHAR(150) NOT NULL,
         role VARCHAR(50) NOT NULL DEFAULT 'operator',
         is_active INT DEFAULT 1,
@@ -144,6 +147,7 @@ function initSQLite($db) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        pin TEXT NULL DEFAULT NULL,
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'operator',
         is_active INTEGER DEFAULT 1,
@@ -188,6 +192,10 @@ function migrateTables($db) {
 
     try {
         $db->exec("ALTER TABLE users ADD COLUMN is_active INT DEFAULT 1");
+    } catch (Exception $e) {}
+
+    try {
+        $db->exec("ALTER TABLE users ADD COLUMN pin VARCHAR(255) NULL DEFAULT NULL");
     } catch (Exception $e) {}
 
     try {

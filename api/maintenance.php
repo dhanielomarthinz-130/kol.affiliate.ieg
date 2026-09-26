@@ -103,8 +103,31 @@ if ($action === 'get_info') {
         'ffmpeg' => [
             'installed' => $ffmpegInstalled,
             'path'      => $ffmpegBin ?: 'Standard System Path'
-        ]
+        ],
+        'maintenance_mode' => getMaintenanceConfig()
     ]);
+    exit;
+}
+
+if ($action === 'toggle_maintenance' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $currentConfig = getMaintenanceConfig();
+    $newStatus = !($currentConfig['is_maintenance'] ?? false);
+    $user = getCurrentUser();
+    $by = $user['username'] ?? 'superadmin';
+    $res = setMaintenanceMode($newStatus, $by);
+
+    if ($res) {
+        echo json_encode([
+            'success' => true,
+            'is_maintenance' => $newStatus,
+            'message' => $newStatus 
+                ? 'Mode Maintenance berhasil DIAKTIFKAN. Hanya Superadmin Daniel yang dapat mengakses sistem.' 
+                : 'Mode Maintenance berhasil DINONAKTIFKAN. Sistem kembali beroperasi normal.'
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Gagal menyimpan status maintenance.']);
+    }
     exit;
 }
 

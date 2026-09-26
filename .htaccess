@@ -12,6 +12,9 @@ AddType video/ogg .ogv
 # Prevent directory indexing
 Options -Indexes
 
+# Custom 404 Error Document
+ErrorDocument 404 404.php
+
 # URL Rewriting for Clean URLs (Remove .php)
 <IfModule mod_rewrite.c>
     RewriteEngine On
@@ -26,4 +29,11 @@ Options -Indexes
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME}.php -f
     RewriteRule ^(.*)$ $1.php [L,QSA]
+
+    # 3. Route non-existent paths to 404.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME}.php !-f
+    RewriteRule ^ 404.php [L]
 </IfModule>
+

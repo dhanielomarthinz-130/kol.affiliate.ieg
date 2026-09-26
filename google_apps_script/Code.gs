@@ -72,23 +72,30 @@ function doPost(e) {
     var fileId = "";
     
     if (data.video_base64 && data.video_base64.length > 0) {
-      var videoBytes = Utilities.base64Decode(data.video_base64);
       var filename = data.video_filename || ("Packing_" + (data.resi_no || "unknown") + ".mp4");
       var mimeType = data.mime_type || "video/mp4";
       
-      var blob = Utilities.newBlob(videoBytes, mimeType, filename);
-      var driveFile = targetFolder.createFile(blob);
-      
-      // Set akses agar siapa saja yang memiliki link dapat melihat video (untuk audit)
-      try {
-        driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      } catch (pErr) {}
+      // Cegah duplikasi file di Drive: jika file dengan nama sama sudah ada, gunakan file yang ada
+      var existingFiles = targetFolder.getFilesByName(filename);
+      var driveFile;
+      if (existingFiles.hasNext()) {
+        driveFile = existingFiles.next();
+      } else {
+        var videoBytes = Utilities.base64Decode(data.video_base64);
+        var blob = Utilities.newBlob(videoBytes, mimeType, filename);
+        driveFile = targetFolder.createFile(blob);
+        
+        // Set akses agar siapa saja yang memiliki link dapat melihat video (untuk audit)
+        try {
+          driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        } catch (pErr) {}
+      }
 
       fileId = driveFile.getId();
       driveUrl = "https://drive.google.com/file/d/" + fileId + "/view?usp=sharing";
     }
 
-    // 3. Masukkan Data ke Google Sheet
+    // 3. Masukkan Data ke Google Sheet (Anti-Duplikasi berdasarkan No Resi)
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(SHEET_NAME);
     if (!sheet) {
@@ -136,20 +143,56 @@ function doPost(e) {
       data.notes || ""
     ];
 
-    sheet.appendRow(newRow);
+    // Cek apakah No Resi sudah pernah dicatat di Google Sheet untuk mencegah duplikasi (Anti-Double Sync)
     var lastRow = sheet.getLastRow();
+    var targetRow = -1;
+    var searchResi = String(data.resi_no || "").trim().toLowerCase();
+
+    if (lastRow > 1 && searchResi !== "") {
+      var resiColumnValues = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+      for (var r = 0; r < resiColumnValues.length; r++) {
+        var existingResi = String(resiColumnValues[r][0] || "").trim().toLowerCase();
+        if (existingResi === searchResi) {
+          targetRow = r + 2; // Baris riil di sheet (1-based, baris 1 adalah header)
+          break;
+        }
+      }
+    }
+
+    if (targetRow > 0) {
+      // Jika resi sudah ada, pertahankan link Drive lama jika payload saat ini kosong
+      if (driveUrl === "") {
+        var existingDriveUrl = sheet.getRange(targetRow, 8).getValue();
+        if (existingDriveUrl) {
+          newRow[7] = existingDriveUrl;
+          driveUrl = existingDriveUrl;
+        }
+      }
+      // Update baris yang sudah ada (tidak menambah baris baru agar tidak double)
+      sheet.getRange(targetRow, 1, 1, newRow.length).setValues([newRow]);
+    } else {
+      // Jika resi belum ada, baru tambahkan baris baru
+      sheet.appendRow(newRow);
+      targetRow = sheet.getLastRow();
+    }
 
     // Buat link video clickable jika ada link
     if (driveUrl !== "") {
-      sheet.getRange(lastRow, 8).setFontColor("#2563eb").setFontUnderline(true);
+      try {
+        var linkCell = sheet.getRange(targetRow, 8);
+        linkCell.setFontColor("#2563eb");
+        linkCell.setFontLine("underline");
+      } catch (styleErr) {
+        // Abaikan issue formatting agar sinkronisasi data tetap berhasil
+      }
     }
 
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
-      message: "Data dan video resi " + (data.resi_no || "") + " berhasil disinkronkan ke Google Sheet & Drive!",
+      message: (targetRow > 0 && targetRow !== sheet.getLastRow() ? "Data diperbarui (update)" : "Data berhasil disimpan") + " untuk resi " + (data.resi_no || "") + "!",
       drive_url: driveUrl,
       file_id: fileId,
-      sheet_row: lastRow
+      sheet_row: targetRow
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {

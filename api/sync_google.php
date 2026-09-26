@@ -19,7 +19,7 @@ function respondJson(array $data, int $code = 200): void {
 }
 
 try {
-    @set_time_limit(90);
+    @set_time_limit(120);
     require_once __DIR__ . '/../config/auth.php';
     require_once __DIR__ . '/../config/google_sync.php';
 
@@ -177,6 +177,22 @@ try {
 
         // Terapkan filter yang aktif saat sync dijalankan!
         [$whereClauses, $params] = buildFilterWhere($_POST);
+
+        // Filter kecualikan ID yang sudah dicoba / gagal dalam sesi batch saat ini (Cegah Looping / Double)
+        $excludeIdsRaw = trim($_POST['exclude_ids'] ?? '');
+        if (!empty($excludeIdsRaw)) {
+            $excludeIds = array_filter(array_map('intval', explode(',', $excludeIdsRaw)), function($val) {
+                return $val > 0;
+            });
+            if (!empty($excludeIds)) {
+                $placeholders = implode(',', array_fill(0, count($excludeIds), '?'));
+                $whereClauses[] = "id NOT IN ({$placeholders})";
+                foreach ($excludeIds as $eid) {
+                    $params[] = $eid;
+                }
+            }
+        }
+
         $whereSql = "WHERE " . implode(" AND ", $whereClauses);
 
         $sql = "SELECT id, resi_no FROM packings {$whereSql} ORDER BY id ASC LIMIT " . intval($limit);
@@ -189,7 +205,7 @@ try {
                 'success'         => true,
                 'message'         => 'Semua data yang sesuai filter sudah tersinkronkan ke Google Sheet & Drive!',
                 'remaining_count' => 0,
-                'synced'          => []
+                'synced_items'    => []
             ]);
         }
 

@@ -139,27 +139,45 @@ function sendPackingToGoogle(int $packingId): array {
         'video_base64'     => $videoBase64
     ];
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $webAppUrl);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 45); // Max 45 detik agar aman di shared hosting
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 12);
-    applyCurlDnsOptions($ch);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Accept: application/json'
-    ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    $maxAttempts = 2;
+    $rawResponse = '';
+    $curlErr = '';
+    $httpCode = 0;
 
-    $rawResponse = curl_exec($ch);
-    $curlErr = curl_error($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $webAppUrl);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 65); // Beri waktu hingga 65 detik untuk proses upload video & sync
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+        applyCurlDnsOptions($ch);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+        $rawResponse = curl_exec($ch);
+        $curlErr = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $testRes = json_decode($rawResponse, true);
+        if ($httpCode === 200 && is_array($testRes)) {
+            break;
+        }
+
+        // Retry jika mendapat kode 404 atau 500-an atau HTML Google error (cold start / edge sync)
+        if ($attempt < $maxAttempts && ($httpCode === 404 || $httpCode >= 500 || strpos($rawResponse, '<!DOCTYPE') !== false)) {
+            usleep(1500000); // Tunggu 1.5 detik
+            continue;
+        }
+    }
 
     if ($curlErr) {
         return [
@@ -177,9 +195,15 @@ function sendPackingToGoogle(int $packingId): array {
 
     $res = json_decode($rawResponse, true);
     if (!is_array($res)) {
+        if ($httpCode === 404) {
+            return [
+                'success' => false,
+                'message' => 'Google Apps Script merespon 404 (Halaman Tidak Ditemukan). Pastikan Web App telah di-Deploy dan "Who has access" diatur ke "Anyone".'
+            ];
+        }
         return [
             'success' => false,
-            'message' => 'Respon Google Apps Script tidak valid (HTTP ' . $httpCode . '): ' . substr($rawResponse, 0, 200)
+            'message' => 'Respon Google Apps Script tidak valid (HTTP ' . $httpCode . '): ' . substr(strip_tags($rawResponse), 0, 160)
         ];
     }
 

@@ -67,7 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const pageFromUrl = urlParams.get('page') || (window.location.hash ? window.location.hash.replace('#', '') : 'packings');
     
-    // Pulihkan filter dari URL jika ada
+    // Pulihkan filter dari URL jika ada, atau default ke tanggal hari ini
+    const localToday = getLocalTodayDate();
     const searchFromUrl = urlParams.get('search');
     const opFromUrl = urlParams.get('operator');
     const dfFromUrl = urlParams.get('date_from');
@@ -79,15 +80,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const sEl = document.getElementById('searchResi');
         if (sEl) sEl.value = searchFromUrl;
     }
-    if (dfFromUrl && _fpFrom) {
-        _fpFrom.setDate(dfFromUrl, false);
-        const fromEl = document.getElementById('filterDateFrom');
-        if (fromEl) fromEl.value = dfFromUrl;
+
+    if (urlParams.has('date_from')) {
+        const dfVal = urlParams.get('date_from');
+        if (dfVal && _fpFrom) {
+            _fpFrom.setDate(dfVal, false);
+        } else if (_fpFrom) {
+            _fpFrom.clear();
+        }
+    } else if (_fpFrom) {
+        _fpFrom.setDate(localToday, false);
     }
-    if (dtFromUrl && _fpTo) {
-        _fpTo.setDate(dtFromUrl, false);
-        const toEl = document.getElementById('filterDateTo');
-        if (toEl) toEl.value = dtFromUrl;
+
+    if (urlParams.has('date_to')) {
+        const dtVal = urlParams.get('date_to');
+        if (dtVal && _fpTo) {
+            _fpTo.setDate(dtVal, false);
+        } else if (_fpTo) {
+            _fpTo.clear();
+        }
+    } else if (_fpTo) {
+        _fpTo.setDate(localToday, false);
     }
 
     loadStats();
@@ -148,6 +161,7 @@ function switchAdminView(view, updateUrl = true) {
         if (viewMaint) viewMaint.style.display = 'block';
         if (titleEl) titleEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:26px; color:#f59e0b;">build_circle</span><span>Maintenance &amp; Diagnostik Sistem</span>`;
         loadMaintenanceInfo();
+        loadDbTablesList();
     } else {
         // default: packings
         if (navPackings) navPackings.classList.add('active');
@@ -162,8 +176,14 @@ function switchAdminView(view, updateUrl = true) {
 // ==========================================
 // FLATPICKR & DATE PRESETS
 // ==========================================
+function getLocalTodayDate() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 function initFlatpickr() {
-    const today = new Date().toISOString().split('T')[0];
+    const localToday = getLocalTodayDate();
 
     const fpConfig = {
         locale: (typeof flatpickr !== 'undefined' && flatpickr.l10ns?.id) ? flatpickr.l10ns.id : 'default',
@@ -183,10 +203,14 @@ function initFlatpickr() {
     const toEl = document.getElementById('filterDateTo');
 
     if (fromEl && typeof flatpickr !== 'undefined') {
-        _fpFrom = flatpickr(fromEl, Object.assign({}, fpConfig, { defaultDate: fromEl.value || today }));
+        const fromOpts = Object.assign({}, fpConfig);
+        fromOpts.defaultDate = fromEl.value || localToday;
+        _fpFrom = flatpickr(fromEl, fromOpts);
     }
     if (toEl && typeof flatpickr !== 'undefined') {
-        _fpTo = flatpickr(toEl, Object.assign({}, fpConfig, { defaultDate: toEl.value || today }));
+        const toOpts = Object.assign({}, fpConfig);
+        toOpts.defaultDate = toEl.value || localToday;
+        _fpTo = flatpickr(toEl, toOpts);
     }
 }
 
@@ -277,13 +301,22 @@ function setupEventListeners() {
         });
     }
 
-    // Reset filters
+    // Reset filters (kembali ke default: hari ini)
     const resetBtn = document.getElementById('btnResetFilter');
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
+            const localToday = getLocalTodayDate();
             if (searchInput) searchInput.value = '';
             if (filterOperator) filterOperator.value = '0';
-            applyDatePreset('today', document.getElementById('btnPresetToday'));
+            if (_fpFrom) _fpFrom.setDate(localToday, false);
+            if (_fpTo) _fpTo.setDate(localToday, false);
+            const fromInput = document.getElementById('filterDateFrom');
+            const toInput = document.getElementById('filterDateTo');
+            if (fromInput) fromInput.value = localToday;
+            if (toInput) toInput.value = localToday;
+
+            loadPackings(1);
+            updateGoogleSyncBadge();
             syncUrlWithState(true);
         });
     }
@@ -374,7 +407,9 @@ function setupEventListeners() {
 // ==========================================
 async function loadStats(silent = false) {
     try {
-        const res = await fetch('api/stats.php?_t=' + Date.now(), { cache: 'no-store' });
+        const filters = getActiveFilterParams();
+        const params = new URLSearchParams(Object.assign({ _t: Date.now() }, filters));
+        const res = await fetch('api/stats.php?' + params.toString(), { cache: 'no-store' });
         const data = await parseResponseJson(res);
         if (data.success) {
             const animateVal = (id, newVal) => {
@@ -387,10 +422,16 @@ async function loadStats(silent = false) {
                 el.textContent = newVal;
             };
 
-            animateVal('statTodayCount', data.stats.today_packings || 0);
-            animateVal('statTodayAvg', (data.stats.today_avg_duration || 0) + 's');
-            animateVal('statTotalCount', data.stats.total_packings || 0);
-            animateVal('statStorage', data.stats.total_storage || '0 MB');
+            const stats = data.stats || data;
+            const todayCount = stats.today_packings ?? stats.today_count ?? 0;
+            const todayAvg = stats.today_avg_duration ?? 0;
+            const totalCount = stats.total_packings ?? stats.total_count ?? 0;
+            const totalStorage = stats.total_storage ?? (stats.total_storage_mb ? stats.total_storage_mb + ' MB' : '0 MB');
+
+            animateVal('statTodayCount', todayCount);
+            animateVal('statTodayAvg', (todayAvg > 60 ? Math.floor(todayAvg / 60) + 'm ' + (todayAvg % 60) + 's' : todayAvg + 's'));
+            animateVal('statTotalCount', totalCount);
+            animateVal('statStorage', totalStorage);
 
             const refreshTimeEl = document.getElementById('lastRefreshTime');
             if (refreshTimeEl) {
@@ -481,6 +522,22 @@ async function loadPackings(page = 1) {
 
         if (result.success) {
             renderTable(result.data, result.total, page, result.total_pages);
+            if (result.stats) {
+                const animateVal = (id, newVal) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    if (el.textContent !== String(newVal)) {
+                        el.classList.add('stat-bump');
+                        setTimeout(() => el.classList.remove('stat-bump'), 500);
+                    }
+                    el.textContent = newVal;
+                };
+
+                animateVal('statTodayCount', result.stats.today_packings ?? 0);
+                animateVal('statTodayAvg', result.stats.formatted_avg ?? (result.stats.avg_duration + 's'));
+                animateVal('statTotalCount', result.stats.total ?? 0);
+                animateVal('statStorage', result.stats.storage ?? '0 MB');
+            }
         } else {
             tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:#ef4444;">Gagal: ${result.message}</td></tr>`;
         }
@@ -619,9 +676,14 @@ async function loadUsersTable() {
 
             tbody.innerHTML = data.data.map((u, idx) => {
                 const isActive = (parseInt(u.is_active) === 1);
+                const hasPin   = (parseInt(u.has_pin) === 1);
                 const roleClass = (u.role === 'superadmin') ? 'badge-role-superadmin' : (u.role === 'admin' ? 'badge-role-admin' : 'badge-role-operator');
                 const roleLabel = (u.role === 'superadmin') ? 'SUPERADMIN' : (u.role === 'admin' ? 'ADMIN' : 'OPERATOR');
                 const createdStr = u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
+                const pinBadge = (u.role === 'operator') ? (hasPin
+                    ? `<span title="PIN sudah diatur" style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(99,102,241,0.12);color:#6366f1;border:1px solid rgba(99,102,241,0.25);margin-left:5px;"><span class="material-symbols-outlined" style="font-size:11px;">pin</span>PIN ✓</span>`
+                    : `<span title="PIN belum diatur" style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(148,163,184,0.12);color:#94a3b8;border:1px solid rgba(148,163,184,0.2);margin-left:5px;"><span class="material-symbols-outlined" style="font-size:11px;">pin</span>No PIN</span>`
+                ) : '';
 
                 return `
                     <tr>
@@ -633,9 +695,10 @@ async function loadUsersTable() {
                             <span style="font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:#2563eb; font-weight:600;">@${escapeHtml(u.username)}</span>
                         </td>
                         <td>
-                            <span class="${roleClass}">${roleLabel}</span>
+                            <span class="${roleClass}">${roleLabel}</span>${pinBadge}
                         </td>
                         <td>
+
                             ${isActive ? `
                                 <span class="badge-active">
                                     <span class="material-symbols-outlined" style="font-size:14px;">check_circle</span>
@@ -653,16 +716,22 @@ async function loadUsersTable() {
                         </td>
                         <td style="text-align:right;">
                             <div style="display:flex; justify-content:flex-end; gap:6px;">
+                                <button class="btn btn-sm" onclick="openEditUserModal(${u.id}, '${escapeHtml(u.name)}', '${escapeHtml(u.username)}', '${u.role}', ${hasPin ? 1 : 0})" title="Edit Pengguna (Nama, Password / PIN)" style="font-size:0.75rem; padding:4px 9px; display:inline-flex; align-items:center; gap:4px; color:#0369a1; background:#e0f2fe; border:1px solid #bae6fd; border-radius:8px; font-weight:600; cursor:pointer;">
+                                    <span class="material-symbols-outlined" style="font-size:14px;">edit</span>
+                                    <span>Edit</span>
+                                </button>
                                 <button class="btn btn-sm ${isActive ? 'btn-outline' : 'btn-success'}" onclick="toggleUserStatus(${u.id}, '${escapeHtml(u.name)}', ${isActive ? 1 : 0})" title="${isActive ? 'Klik untuk Menonaktifkan akun' : 'Klik untuk Mengaktifkan akun kembali'}" style="font-size:0.75rem; padding:4px 9px;">
                                     <span class="material-symbols-outlined" style="font-size:15px;">${isActive ? 'power_settings_new' : 'check'}</span>
                                     <span>${isActive ? 'Inactive' : 'Aktifkan'}</span>
                                 </button>
+                                ${u.role === 'operator' ? `<button class="btn btn-sm" onclick="openSetPinModal(${u.id}, '${escapeHtml(u.name)}')" title="Atur PIN Login Operator" style="font-size:0.75rem; padding:4px 9px; background:linear-gradient(135deg,#6366f1,#818cf8); color:#fff; border:none; border-radius:8px; display:inline-flex; align-items:center; gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">pin</span><span>PIN</span></button>` : ''}
                                 <button class="btn btn-danger btn-sm" onclick="deleteUserRecord(${u.id}, '${escapeHtml(u.username)}')" title="Hapus Akun Pengguna" style="padding:4px 8px;">
                                     <span class="material-symbols-outlined" style="font-size:15px;">delete</span>
                                 </button>
                             </div>
                         </td>
                     </tr>
+
                 `;
             }).join('');
         } else {
@@ -736,9 +805,357 @@ function closeAddUserModal() {
 }
 
 // ==========================================
+// DATABASE MANAGER (SUPERADMIN)
+// ==========================================
+
+// ==========================================
+// DATABASE MANAGER — TABEL SISTEM & HAPUS PER DATA
+// ==========================================
+let _dbModalActiveTable = '';
+let _dbModalCurrentRows = [];
+let _dbModalColumns = [];
+
+async function loadDbTablesList() {
+    const tbody = document.getElementById('dbTablesMasterBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="4" style="padding:22px; text-align:center; color:#94a3b8; font-size:0.82rem;">
+                <span class="material-symbols-outlined" style="vertical-align:middle; font-size:18px; animation:spin 1s linear infinite;">sync</span>
+                <span style="margin-left:6px;">Mengambil daftar tabel database...</span>
+            </td>
+        </tr>
+    `;
+
+    try {
+        const res  = await fetch('api/db_manager.php?action=list_tables&_t=' + Date.now());
+        const data = await parseResponseJson(res);
+
+        if (!data.success || !Array.isArray(data.tables)) {
+            tbody.innerHTML = `<tr><td colspan="4" style="padding:16px; text-align:center; color:#dc2626; font-size:0.82rem;">Gagal memuat tabel: ${escapeHtml(data.message || 'Error')}</td></tr>`;
+            return;
+        }
+
+        let html = '';
+        data.tables.forEach((t, i) => {
+            const bg = i % 2 === 0 ? '#ffffff' : '#fafbfc';
+            const countBadge = t.count > 0 
+                ? `<span style="display:inline-flex; align-items:center; padding:3px 10px; border-radius:9999px; font-size:0.75rem; font-weight:700; background:rgba(37,99,235,0.1); color:#2563eb; border:1px solid rgba(37,99,235,0.2);">${t.count} Baris Data</span>`
+                : `<span style="display:inline-flex; align-items:center; padding:3px 10px; border-radius:9999px; font-size:0.75rem; font-weight:600; background:#f1f5f9; color:#94a3b8;">Kosong (0)</span>`;
+
+            html += `
+                <tr style="background:${bg}; border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='${bg}'">
+                    <td style="padding:14px 18px; vertical-align:middle;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="width:36px; height:36px; border-radius:10px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                <span class="material-symbols-outlined" style="font-size:20px;">${escapeHtml(t.icon || 'table_chart')}</span>
+                            </div>
+                            <div>
+                                <div style="font-weight:700; font-size:0.88rem; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                                    <code>${escapeHtml(t.name)}</code>
+                                    <span style="font-size:0.68rem; font-weight:600; padding:1px 6px; border-radius:4px; background:#f1f5f9; color:#475569;">${escapeHtml(t.badge || 'Tabel')}</span>
+                                </div>
+                                <div style="font-size:0.74rem; color:#64748b; margin-top:2px;">${escapeHtml(t.label || t.name)}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="padding:14px 18px; vertical-align:middle; color:#475569; font-size:0.8rem; max-width:320px; line-height:1.45;">
+                        ${escapeHtml(t.desc)}
+                    </td>
+                    <td style="padding:14px 18px; text-align:center; vertical-align:middle; white-space:nowrap;">
+                        ${countBadge}
+                    </td>
+                    <td style="padding:14px 18px; text-align:right; vertical-align:middle; white-space:nowrap;">
+                        <div style="display:inline-flex; align-items:center; gap:8px;">
+                            <button onclick="openDbDataManageModal('${escapeHtml(t.name)}', '${escapeHtml(t.label || t.name)}', '${escapeHtml(t.icon || 'table_chart')}')" class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; gap:5px; padding:0.42rem 0.85rem; font-size:0.78rem;">
+                                <span class="material-symbols-outlined" style="font-size:15px;">manage_search</span>
+                                <span>Kelola &amp; Hapus Data</span>
+                            </button>
+                            ${t.can_clear && t.count > 0 ? `
+                                <button onclick="deleteAllTableRows('${escapeHtml(t.name)}')" class="btn btn-danger btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:0.42rem 0.75rem; font-size:0.78rem;" title="Kosongkan semua baris tabel ini">
+                                    <span class="material-symbols-outlined" style="font-size:15px;">delete_sweep</span>
+                                    <span>Kosongkan</span>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4" style="padding:16px; text-align:center; color:#dc2626; font-size:0.82rem;">Error: ${escapeHtml(e.message)}</td></tr>`;
+    }
+}
+
+// Open modal to view and delete rows
+function openDbDataManageModal(tableName, tableLabel, tableIcon) {
+    _dbModalActiveTable = tableName;
+    const modal = document.getElementById('dbDataManageModal');
+    const titleEl = document.getElementById('dbModalTableName');
+    const iconEl = document.getElementById('dbModalIcon');
+    const searchEl = document.getElementById('dbModalSearchInput');
+
+    if (titleEl) titleEl.textContent = `Tabel: ${tableName} (${tableLabel || tableName})`;
+    if (iconEl) iconEl.textContent = tableIcon || 'table_chart';
+    if (searchEl) searchEl.value = '';
+
+    if (modal) modal.classList.add('active');
+    loadDbModalTable(tableName);
+}
+
+function closeDbDataManageModal() {
+    const modal = document.getElementById('dbDataManageModal');
+    if (modal) modal.classList.remove('active');
+    _dbModalActiveTable = '';
+    // Refresh table list count
+    loadDbTablesList();
+}
+
+function reloadCurrentDbModalTable() {
+    if (_dbModalActiveTable) {
+        loadDbModalTable(_dbModalActiveTable);
+    }
+}
+
+async function loadDbModalTable(tableName) {
+    const headEl = document.getElementById('dbModalTableHead');
+    const bodyEl = document.getElementById('dbModalTableBody');
+    const emptyEl = document.getElementById('dbModalEmpty');
+    const countEl = document.getElementById('dbModalRowCount');
+
+    if (!headEl || !bodyEl) return;
+
+    if (countEl) countEl.innerHTML = '<span style="color:#64748b;">⏳ Mengambil data...</span>';
+    if (emptyEl) emptyEl.style.display = 'none';
+    headEl.innerHTML = '<tr><th style="padding:10px 14px; color:#94a3b8; font-size:0.75rem; text-align:center;">⏳ Memuat...</th></tr>';
+    bodyEl.innerHTML = '';
+
+    try {
+        const res  = await fetch(`api/db_manager.php?action=get_table&table=${encodeURIComponent(tableName)}&_t=` + Date.now());
+        const data = await parseResponseJson(res);
+
+        if (!data.success) {
+            headEl.innerHTML = '';
+            if (countEl) countEl.innerHTML = `<span style="color:#dc2626;">Gagal memuat: ${escapeHtml(data.message || 'Error')}</span>`;
+            return;
+        }
+
+        const { columns, rows, total } = data;
+        _dbModalColumns = columns || [];
+        _dbModalCurrentRows = rows || [];
+
+        if (countEl) {
+            countEl.innerHTML = `Total: <strong>${total}</strong> baris data di tabel <code style="background:#eff6ff; color:#2563eb; padding:2px 6px; border-radius:4px;">${escapeHtml(tableName)}</code>`;
+        }
+
+        if (!rows || rows.length === 0) {
+            headEl.innerHTML = '';
+            bodyEl.innerHTML = '';
+            if (emptyEl) emptyEl.style.display = 'block';
+            return;
+        }
+
+        renderDbModalRows(_dbModalColumns, _dbModalCurrentRows, tableName);
+
+    } catch (e) {
+        if (countEl) countEl.innerHTML = `<span style="color:#dc2626;">Error: ${escapeHtml(e.message)}</span>`;
+    }
+}
+
+function renderDbModalRows(columns, rows, tableName) {
+    const headEl = document.getElementById('dbModalTableHead');
+    const bodyEl = document.getElementById('dbModalTableBody');
+    const emptyEl = document.getElementById('dbModalEmpty');
+
+    if (!headEl || !bodyEl) return;
+
+    if (!rows || rows.length === 0) {
+        headEl.innerHTML = '';
+        bodyEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    // Build specialized clean columns based on table
+    const colStyle = 'padding:10px 14px; text-align:left; font-size:0.74rem; font-weight:700; color:#475569; background:#f8fafc; border-bottom:2px solid #e2e8f0; white-space:nowrap; text-transform:uppercase; letter-spacing:.03em;';
+    const cellStyle = 'padding:10px 14px; border-bottom:1px solid #f1f5f9; font-size:0.8rem; color:#334155; vertical-align:middle;';
+
+    let hRow = '<tr>';
+    if (tableName === 'packings') {
+        hRow += `<th style="${colStyle} width:60px;">ID</th>`;
+        hRow += `<th style="${colStyle}">No. Resi</th>`;
+        hRow += `<th style="${colStyle}">Operator</th>`;
+        hRow += `<th style="${colStyle}">Waktu Rekam</th>`;
+        hRow += `<th style="${colStyle}">Durasi</th>`;
+        hRow += `<th style="${colStyle}">Ukuran Video</th>`;
+        hRow += `<th style="${colStyle}">Google Drive</th>`;
+        hRow += `<th style="${colStyle} text-align:center; width:90px;">Aksi</th>`;
+    } else if (tableName === 'users') {
+        hRow += `<th style="${colStyle} width:60px;">ID</th>`;
+        hRow += `<th style="${colStyle}">Username</th>`;
+        hRow += `<th style="${colStyle}">Nama Pengguna</th>`;
+        hRow += `<th style="${colStyle}">Role</th>`;
+        hRow += `<th style="${colStyle}">Status</th>`;
+        hRow += `<th style="${colStyle}">Dibuat</th>`;
+        hRow += `<th style="${colStyle} text-align:center; width:90px;">Aksi</th>`;
+    } else {
+        // Fallback for system tables
+        columns.forEach(c => { hRow += `<th style="${colStyle}">${escapeHtml(c)}</th>`; });
+        hRow += `<th style="${colStyle} text-align:center; width:90px;">Aksi</th>`;
+    }
+    hRow += '</tr>';
+    headEl.innerHTML = hRow;
+
+    // Build body
+    let bHtml = '';
+    rows.forEach((r, idx) => {
+        const rowId = r.id ?? r.rowid ?? idx;
+        const bg = idx % 2 === 0 ? '#ffffff' : '#fafbfc';
+
+        bHtml += `<tr style="background:${bg}; transition:background 0.15s ease;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${bg}'">`;
+
+        if (tableName === 'packings') {
+            const sizeFormatted = r.video_filesize ? formatBytes(r.video_filesize) : '—';
+            const durFormatted = r.duration_seconds ? `${r.duration_seconds} dtk` : '—';
+            const driveBadge = r.gdrive_url 
+                ? `<a href="${escapeHtml(r.gdrive_url)}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; color:#2563eb; font-weight:600; text-decoration:none;"><span class="material-symbols-outlined" style="font-size:15px;">open_in_new</span> Link Drive</a>` 
+                : `<span style="color:#94a3b8; font-size:0.75rem;">Belum Sync</span>`;
+
+            bHtml += `<td style="${cellStyle} font-family:monospace; font-weight:600; color:#64748b;">#${escapeHtml(String(rowId))}</td>`;
+            bHtml += `<td style="${cellStyle} font-weight:700; color:#0f172a;"><span style="background:#f1f5f9; padding:2px 8px; border-radius:5px; border:1px solid #e2e8f0;">${escapeHtml(r.resi_no || '—')}</span></td>`;
+            bHtml += `<td style="${cellStyle} font-weight:600;">${escapeHtml(r.operator_name || '—')}</td>`;
+            bHtml += `<td style="${cellStyle} font-size:0.76rem; color:#475569; white-space:nowrap;">${escapeHtml(r.start_time || r.created_at || '—')}</td>`;
+            bHtml += `<td style="${cellStyle} font-size:0.76rem; color:#475569;">${durFormatted}</td>`;
+            bHtml += `<td style="${cellStyle} font-size:0.76rem; color:#475569;">${sizeFormatted}</td>`;
+            bHtml += `<td style="${cellStyle}">${driveBadge}</td>`;
+            bHtml += `<td style="${cellStyle} text-align:center;">
+                <button onclick="deleteDbModalRow('packings', ${rowId}, '${escapeHtml(r.resi_no || '#' + rowId)}')" class="btn btn-danger btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; font-size:0.74rem;" title="Hapus data ini">
+                    <span class="material-symbols-outlined" style="font-size:14px;">delete</span>
+                    <span>Hapus</span>
+                </button>
+            </td>`;
+        } else if (tableName === 'users') {
+            const roleBadge = r.role === 'superadmin' 
+                ? '<span style="background:#fef3c7; color:#b45309; padding:2px 7px; border-radius:4px; font-weight:700; font-size:0.72rem;">Superadmin</span>'
+                : (r.role === 'admin' 
+                    ? '<span style="background:#e0e7ff; color:#3730a3; padding:2px 7px; border-radius:4px; font-weight:700; font-size:0.72rem;">Admin</span>' 
+                    : '<span style="background:#f1f5f9; color:#475569; padding:2px 7px; border-radius:4px; font-weight:700; font-size:0.72rem;">Operator</span>');
+            const statusBadge = (r.is_active == 1 || r.is_active === null)
+                ? '<span style="color:#059669; font-weight:600; font-size:0.74rem;">● Aktif</span>'
+                : '<span style="color:#dc2626; font-weight:600; font-size:0.74rem;">● Nonaktif</span>';
+
+            bHtml += `<td style="${cellStyle} font-family:monospace; color:#64748b;">#${escapeHtml(String(rowId))}</td>`;
+            bHtml += `<td style="${cellStyle} font-weight:700; color:#0f172a;">${escapeHtml(r.username || '—')}</td>`;
+            bHtml += `<td style="${cellStyle}">${escapeHtml(r.name || '—')}</td>`;
+            bHtml += `<td style="${cellStyle}">${roleBadge}</td>`;
+            bHtml += `<td style="${cellStyle}">${statusBadge}</td>`;
+            bHtml += `<td style="${cellStyle} font-size:0.74rem; color:#64748b;">${escapeHtml(r.created_at || '—')}</td>`;
+            bHtml += `<td style="${cellStyle} text-align:center;">
+                <button onclick="deleteDbModalRow('users', ${rowId}, '${escapeHtml(r.username || '#' + rowId)}')" class="btn btn-danger btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; font-size:0.74rem;" title="Hapus pengguna ini">
+                    <span class="material-symbols-outlined" style="font-size:14px;">delete</span>
+                    <span>Hapus</span>
+                </button>
+            </td>`;
+        } else {
+            // generic fallback
+            columns.forEach(c => {
+                let val = r[c] ?? '';
+                if (typeof val === 'string' && val.length > 50) val = val.substring(0,50) + '…';
+                bHtml += `<td style="${cellStyle} max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(String(val))}</td>`;
+            });
+            const canDelete = tableName !== 'sqlite_sequence';
+            if (canDelete) {
+                bHtml += `<td style="${cellStyle} text-align:center;">
+                    <button onclick="deleteDbModalRow('${tableName}', ${rowId}, '#${rowId}')" class="btn btn-danger btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; font-size:0.74rem;">
+                        <span class="material-symbols-outlined" style="font-size:14px;">delete</span>
+                        <span>Hapus</span>
+                    </button>
+                </td>`;
+            } else {
+                bHtml += `<td style="${cellStyle} text-align:center; color:#94a3b8;">—</td>`;
+            }
+        }
+
+        bHtml += '</tr>';
+    });
+
+    bodyEl.innerHTML = bHtml;
+}
+
+function filterDbModalRows(query) {
+    if (!_dbModalCurrentRows || _dbModalCurrentRows.length === 0) return;
+    const q = (query || '').toLowerCase().trim();
+
+    if (!q) {
+        renderDbModalRows(_dbModalColumns, _dbModalCurrentRows, _dbModalActiveTable);
+        return;
+    }
+
+    const filtered = _dbModalCurrentRows.filter(row => {
+        return Object.values(row).some(v => String(v || '').toLowerCase().includes(q));
+    });
+
+    renderDbModalRows(_dbModalColumns, filtered, _dbModalActiveTable);
+}
+
+async function deleteDbModalRow(tableName, rowId, identifier) {
+    const label = identifier ? `"${identifier}" (ID: ${rowId})` : `ID ${rowId}`;
+    if (!confirm(`⚠️ Yakin ingin menghapus data ${label} dari tabel "${tableName}"?\n\nTindakan ini permanen dan tidak dapat dibatalkan!`)) return;
+
+    try {
+        const fd = new FormData();
+        fd.append('table', tableName);
+        fd.append('id', rowId);
+
+        const res  = await fetch('api/db_manager.php?action=delete_row', { method: 'POST', body: fd });
+        const data = await parseResponseJson(res);
+
+        if (data.success) {
+            showAdminToast(data.message || 'Data berhasil dihapus.', 'success');
+            // Refresh modal table
+            loadDbModalTable(tableName);
+            // Refresh master table list count
+            loadDbTablesList();
+        } else {
+            showAdminToast(data.message || 'Gagal menghapus data.', 'error');
+        }
+    } catch (e) {
+        showAdminToast('Gagal menghapus: ' + e.message, 'error');
+    }
+}
+
+async function deleteAllTableRows(tableName) {
+    if (!confirm(`🔴 HAPUS SEMUA data di tabel "${tableName}"?\n\nSemua baris data akan dihapus permanen dari database!`)) return;
+    if (!confirm(`⚠️ Konfirmasi Terakhir: Anda benar-benar yakin ingin MENGOSONGKAN tabel "${tableName}"?`)) return;
+
+    try {
+        const fd = new FormData();
+        fd.append('table', tableName);
+        const res  = await fetch('api/db_manager.php?action=delete_all_rows', { method: 'POST', body: fd });
+        const data = await parseResponseJson(res);
+        if (data.success) {
+            showAdminToast(data.message || `Semua data di tabel "${tableName}" berhasil dikosongkan.`, 'success');
+            loadDbTablesList();
+            if (_dbModalActiveTable === tableName) {
+                loadDbModalTable(tableName);
+            }
+        } else {
+            showAdminToast(data.message || 'Gagal mengosongkan tabel.', 'error');
+        }
+    } catch (e) {
+        showAdminToast('Gagal: ' + e.message, 'error');
+    }
+}
+
+// ==========================================
 // MAINTENANCE SYSTEM (SUPERADMIN)
 // ==========================================
 async function loadMaintenanceInfo() {
+
     const freeEl = document.getElementById('maintFreeDisk');
     const vidEl = document.getElementById('maintVideoSize');
     const ratioEl = document.getElementById('maintSyncRatio');
@@ -767,11 +1184,96 @@ async function loadMaintenanceInfo() {
                     <div><b>Converter FFmpeg:</b> ${data.ffmpeg.installed ? '<span style="color:#10b981; font-weight:bold;">Tersedia &amp; Aktif (' + escapeHtml(data.ffmpeg.path) + ')</span>' : '<span style="color:#ef4444;">Tidak Ditemukan</span>'}</div>
                 `;
             }
+
+            // ----- Render Maintenance Mode status -----
+            _renderMaintenanceModeUI(data.maintenance_mode);
+
         } else {
             showAdminToast(data.message, 'error');
         }
     } catch (e) {
         if (specsEl) specsEl.textContent = 'Gagal memuat diagnostik: ' + e.message;
+    }
+}
+
+function _renderMaintenanceModeUI(cfg) {
+    if (!cfg) return;
+    const isActive = !!cfg.is_maintenance;
+    const badge    = document.getElementById('maintModeBadge');
+    const dot      = document.getElementById('maintModeDot');
+    const label    = document.getElementById('maintModeLabel');
+    const btn      = document.getElementById('btnToggleMaintenance');
+    const btnIcon  = document.getElementById('maintToggleIcon');
+    const btnLabel = document.getElementById('maintToggleLabel');
+    const lastEl   = document.getElementById('maintLastChanged');
+
+    if (badge) {
+        if (isActive) {
+            badge.style.background = 'rgba(245,158,11,0.12)';
+            badge.style.color = '#d97706';
+            badge.style.borderColor = 'rgba(245,158,11,0.35)';
+        } else {
+            badge.style.background = 'rgba(16,185,129,0.12)';
+            badge.style.color = '#059669';
+            badge.style.borderColor = 'rgba(16,185,129,0.3)';
+        }
+    }
+    if (dot) dot.style.background = isActive ? '#f59e0b' : '#10b981';
+    if (label) label.textContent = isActive ? 'Maintenance Aktif' : 'Sistem Normal (Aktif)';
+
+    if (btn) {
+        if (isActive) {
+            btn.style.background = 'linear-gradient(135deg,#dc2626,#ef4444)';
+            btn.style.color = '#fff';
+            btn.style.border = '1px solid transparent';
+            btn.style.boxShadow = '0 4px 14px -4px rgba(220,38,38,0.5)';
+        } else {
+            btn.style.background = 'linear-gradient(135deg,#d97706,#f59e0b)';
+            btn.style.color = '#fff';
+            btn.style.border = '1px solid transparent';
+            btn.style.boxShadow = '0 4px 14px -4px rgba(245,158,11,0.5)';
+        }
+    }
+    if (btnIcon) btnIcon.textContent = isActive ? 'power_off' : 'power_settings_new';
+    if (btnLabel) btnLabel.textContent = isActive ? 'Nonaktifkan Maintenance' : 'Aktifkan Maintenance';
+    if (lastEl && cfg.updated_at) {
+        const ts = cfg.updated_at ? new Date(cfg.updated_at).toLocaleString('id-ID') : '-';
+        lastEl.textContent = isActive ? `Diaktifkan oleh ${cfg.updated_by || 'system'} pada ${ts}` : `Terakhir dinonaktifkan: ${ts}`;
+    } else if (lastEl) {
+        lastEl.textContent = isActive ? `Diaktifkan oleh ${cfg.updated_by || 'system'}` : 'Status: Normal';
+    }
+}
+
+async function toggleMaintenanceMode() {
+    const btn = document.getElementById('btnToggleMaintenance');
+    const labelEl = document.getElementById('maintModeLabel');
+    const isCurrentlyActive = labelEl && labelEl.textContent.includes('Maintenance Aktif');
+
+    const confirmMsg = isCurrentlyActive
+        ? '⚠️ NONAKTIFKAN Mode Maintenance?\n\nSistem akan kembali dapat diakses oleh semua pengguna.'
+        : '🔒 AKTIFKAN Mode Maintenance?\n\nHanya Superadmin (Daniel) yang dapat login. Semua pengguna lain akan diblokir!';
+
+    if (!confirm(confirmMsg)) return;
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="material-symbols-outlined spin" style="font-size:16px;">sync</span> <span>Memproses...</span>`;
+    }
+
+    try {
+        const res = await fetch('api/maintenance.php?action=toggle_maintenance', { method: 'POST' });
+        const data = await parseResponseJson(res);
+        if (data.success) {
+            showAdminToast(data.message, data.is_maintenance ? 'warning' : 'success');
+            // Reload info to sync UI state
+            await loadMaintenanceInfo();
+        } else {
+            showAdminToast(data.message || 'Gagal mengubah status maintenance.', 'error');
+        }
+    } catch (e) {
+        showAdminToast('Kesalahan jaringan: ' + e.message, 'error');
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }
 
@@ -1011,9 +1513,10 @@ async function startBatchSync() {
     if (modal) modal.classList.add('active');
 
     const statusText = document.getElementById('batchSyncStatusText');
+    const detailText = document.getElementById('batchSyncDetailText');
     const progressText = document.getElementById('batchSyncProgressText');
     const progressBar = document.getElementById('batchSyncProgressBar');
-    const logBox = document.getElementById('batchSyncLogs');
+    const noticeBox = document.getElementById('batchSyncNotice');
     const filterNoticeText = document.getElementById('batchSyncFilterNoticeText');
     const btnCancel = document.getElementById('btnCancelBatchSync');
     const btnDone = document.getElementById('btnDoneBatchSync');
@@ -1022,11 +1525,20 @@ async function startBatchSync() {
     if (btnDone) btnDone.style.display = 'none';
     if (btnCancel) btnCancel.style.display = 'inline-flex';
     if (btnClose) btnClose.style.display = 'inline-flex';
+    if (noticeBox) {
+        noticeBox.style.display = 'none';
+        noticeBox.textContent = '';
+    }
 
-    if (statusText) statusText.textContent = 'Memeriksa antrean paket sesuai filter aktif...';
+    const spinnerAnim = document.getElementById('syncSpinnerAnimation');
+    const successIcon = document.getElementById('syncSuccessIcon');
+    if (spinnerAnim) spinnerAnim.style.display = 'block';
+    if (successIcon) successIcon.style.display = 'none';
+
+    if (statusText) statusText.textContent = 'Memeriksa antrean paket...';
+    if (detailText) detailText.textContent = 'Menyiapkan sinkronisasi...';
     if (progressText) progressText.textContent = '0%';
     if (progressBar) progressBar.style.width = '0%';
-    if (logBox) logBox.innerHTML = '<div style="color:#94a3b8;">Menyiapkan proses sinkronisasi...</div>';
 
     _isBatchSyncRunning = true;
     _batchSyncCancelled = false;
@@ -1052,7 +1564,7 @@ async function startBatchSync() {
 
     const filterDesc = filterSummary.length > 0 ? filterSummary.join(' | ') : 'Semua Periode';
     if (filterNoticeText) {
-        filterNoticeText.textContent = `Target Sinkronisasi [Filter Aktif]: ${filterDesc}`;
+        filterNoticeText.textContent = `Target Sinkronisasi: ${filterDesc}`;
     }
 
     try {
@@ -1061,8 +1573,15 @@ async function startBatchSync() {
         const cfgData = await parseResponseJson(cfgRes);
 
         if (!cfgData.success || !cfgData.config?.gas_webapp_url) {
-            if (statusText) statusText.textContent = 'URL Google Apps Script belum diatur!';
-            if (logBox) logBox.innerHTML += '<div style="color:#ef4444; margin-top:4px;">[PERHATIAN] Harap masukkan URL Web App Google Apps Script terlebih dahulu di menu Setting Google.</div>';
+            if (spinnerAnim) spinnerAnim.style.display = 'none';
+            if (successIcon) {
+                successIcon.style.display = 'inline-flex';
+                successIcon.style.background = '#fef2f2';
+                successIcon.style.color = '#dc2626';
+                successIcon.innerHTML = '<span class="material-symbols-outlined" style="font-size: 36px;">warning</span>';
+            }
+            if (statusText) statusText.textContent = 'URL Google Apps Script Belum Diatur';
+            if (detailText) detailText.textContent = 'Harap atur URL Web App di menu Google Sync terlebih dahulu.';
             if (btnCancel) btnCancel.style.display = 'none';
             if (btnDone) btnDone.style.display = 'inline-flex';
             _isBatchSyncRunning = false;
@@ -1071,20 +1590,31 @@ async function startBatchSync() {
 
         const totalToSync = cfgData.filter_pending_count || 0;
         if (totalToSync === 0) {
-            if (statusText) statusText.textContent = 'Semua data sesuai filter sudah tersinkronkan!';
+            if (spinnerAnim) spinnerAnim.style.display = 'none';
+            if (successIcon) {
+                successIcon.style.display = 'inline-flex';
+                successIcon.style.background = '#dcfce7';
+                successIcon.style.color = '#16a34a';
+                successIcon.innerHTML = '<span class="material-symbols-outlined" style="font-size: 36px;">check_circle</span>';
+            }
+            if (statusText) statusText.textContent = 'Semua Data Sudah Tersinkronkan!';
+            if (detailText) detailText.textContent = 'Tidak ada antrean paket yang belum tersinkronkan pada filter ini.';
             if (progressText) progressText.textContent = '100%';
             if (progressBar) progressBar.style.width = '100%';
-            if (logBox) logBox.innerHTML += `<div style="color:#10b981; margin-top:4px;">[SELESAI] Tidak ada antrean paket untuk filter: <b>${escapeHtml(filterDesc)}</b>. Semua rekaman sudah ada di Google Drive &amp; Sheets!</div>`;
             if (btnCancel) btnCancel.style.display = 'none';
             if (btnDone) btnDone.style.display = 'inline-flex';
             _isBatchSyncRunning = false;
             return;
         }
 
-        if (statusText) statusText.textContent = `Menemukan ${totalToSync} paket sesuai filter. Mengunggah ke Drive...`;
-        if (logBox) logBox.innerHTML += `<div style="margin-top:4px;">Ditemukan total <b>${totalToSync}</b> paket untuk disinkronkan (${escapeHtml(filterDesc)}).</div>`;
+        if (statusText) statusText.textContent = `Menyinkronkan ${totalToSync} paket ke Google Drive...`;
+        if (detailText) detailText.textContent = 'Memulai proses upload...';
 
         let processedCount = 0;
+        let successCount = 0;
+        let failedCount = 0;
+        let lastFailedMessage = '';
+        const failedIds = [];
 
         while (_isBatchSyncRunning && !_batchSyncCancelled) {
             const formData = new FormData();
@@ -1093,6 +1623,9 @@ async function startBatchSync() {
             formData.append('operator_id', activeFilters.operator_id);
             formData.append('date_from', activeFilters.date_from);
             formData.append('date_to', activeFilters.date_to);
+            if (failedIds.length > 0) {
+                formData.append('exclude_ids', failedIds.join(','));
+            }
 
             const syncRes = await fetch('api/sync_google.php?action=sync_pending', {
                 method: 'POST',
@@ -1101,7 +1634,8 @@ async function startBatchSync() {
             const syncData = await parseResponseJson(syncRes);
 
             if (!syncData.success) {
-                if (logBox) logBox.innerHTML += `<div style="color:#ef4444; margin-top:4px;">[GAGAL] ${escapeHtml(syncData.message || 'Error')}</div>`;
+                failedCount++;
+                lastFailedMessage = syncData.message || 'Koneksi ke server gagal.';
                 break;
             }
 
@@ -1109,40 +1643,96 @@ async function startBatchSync() {
                 break;
             }
 
-            syncData.synced_items.forEach(item => {
+            for (const item of syncData.synced_items) {
                 processedCount++;
-                const isSuccess = item.success;
-                const color = isSuccess ? '#34d399' : '#f87171';
-                const icon = isSuccess ? '✓' : '✗';
-                if (logBox) {
-                    logBox.innerHTML += `<div style="color:${color}; margin-top:3px;">[${processedCount}/${totalToSync}] ${icon} Resi: <b>${escapeHtml(item.resi_no)}</b> - ${escapeHtml(item.message)}</div>`;
-                    logBox.scrollTop = logBox.scrollHeight;
+                if (item.success) {
+                    successCount++;
+                } else {
+                    failedCount++;
+                    lastFailedMessage = item.message || 'Gagal sinkron ke Google.';
+                    failedIds.push(item.id);
                 }
-            });
 
-            const percent = Math.min(100, Math.round((processedCount / totalToSync) * 100));
-            if (progressText) progressText.textContent = percent + '%';
-            if (progressBar) progressBar.style.width = percent + '%';
-            if (statusText) statusText.textContent = `Mengunggah... (${processedCount}/${totalToSync} selesai)`;
+                const percent = Math.min(100, Math.round((processedCount / totalToSync) * 100));
+                if (progressText) progressText.textContent = `${percent}% (${processedCount}/${totalToSync})`;
+                if (progressBar) progressBar.style.width = percent + '%';
+                if (statusText) statusText.textContent = `Mengunggah (${processedCount}/${totalToSync})...`;
+                if (detailText) detailText.textContent = `Resi: ${item.resi_no}`;
+            }
 
             if (syncData.remaining_count === 0) {
                 break;
             }
         }
 
+        if (spinnerAnim) spinnerAnim.style.display = 'none';
+
         if (_batchSyncCancelled) {
-            if (statusText) statusText.textContent = 'Sinkronisasi dihentikan oleh pengguna.';
-            if (logBox) logBox.innerHTML += '<div style="color:#fbbf24; margin-top:4px;">[INFO] Proses sinkronisasi dihentikan.</div>';
+            if (successIcon) {
+                successIcon.style.display = 'inline-flex';
+                successIcon.style.background = '#fef3c7';
+                successIcon.style.color = '#d97706';
+                successIcon.innerHTML = '<span class="material-symbols-outlined" style="font-size: 36px;">pause_circle</span>';
+            }
+            if (statusText) statusText.textContent = 'Sinkronisasi Dihentikan';
+            if (detailText) detailText.textContent = `Dihentikan pada progres ${processedCount} dari ${totalToSync} paket.`;
         } else {
-            if (statusText) statusText.textContent = 'Proses sinkronisasi filter selesai!';
-            if (progressText) progressText.textContent = '100%';
-            if (progressBar) progressBar.style.width = '100%';
-            if (logBox) logBox.innerHTML += `<div style="color:#10b981; font-weight:bold; margin-top:4px;">[SUKSES] Semua antrean sesuai filter (${escapeHtml(filterDesc)}) telah selesai disinkronkan ke Google Sheet &amp; Drive!</div>`;
+            if (failedCount === 0) {
+                if (successIcon) {
+                    successIcon.style.display = 'inline-flex';
+                    successIcon.style.background = '#dcfce7';
+                    successIcon.style.color = '#16a34a';
+                    successIcon.innerHTML = '<span class="material-symbols-outlined" style="font-size: 36px;">check_circle</span>';
+                }
+                if (statusText) statusText.textContent = 'Sinkronisasi Selesai!';
+                if (detailText) detailText.textContent = `Semua ${processedCount} paket berhasil diunggah ke Google Sheet & Drive.`;
+                if (progressText) progressText.textContent = '100%';
+                if (progressBar) progressBar.style.width = '100%';
+            } else if (successCount > 0) {
+                if (successIcon) {
+                    successIcon.style.display = 'inline-flex';
+                    successIcon.style.background = '#fef3c7';
+                    successIcon.style.color = '#d97706';
+                    successIcon.innerHTML = '<span class="material-symbols-outlined" style="font-size: 36px;">warning</span>';
+                }
+                if (statusText) statusText.textContent = 'Sinkronisasi Selesai Sebagian';
+                if (detailText) detailText.textContent = `${successCount} berhasil, ${failedCount} gagal.`;
+                if (noticeBox) {
+                    noticeBox.style.display = 'block';
+                    noticeBox.style.background = '#fffbeb';
+                    noticeBox.style.color = '#b45309';
+                    noticeBox.style.border = '1px solid #fde68a';
+                    noticeBox.innerHTML = `<b>Catatan Kendala:</b> ${escapeHtml(lastFailedMessage)}`;
+                }
+            } else {
+                if (successIcon) {
+                    successIcon.style.display = 'inline-flex';
+                    successIcon.style.background = '#fef2f2';
+                    successIcon.style.color = '#dc2626';
+                    successIcon.innerHTML = '<span class="material-symbols-outlined" style="font-size: 36px;">error</span>';
+                }
+                if (statusText) statusText.textContent = 'Gagal Menyinkronkan Paket';
+                if (detailText) detailText.textContent = 'Terjadi kendala pada respon Google Apps Script.';
+                if (noticeBox) {
+                    noticeBox.style.display = 'block';
+                    noticeBox.style.background = '#fef2f2';
+                    noticeBox.style.color = '#b91c1c';
+                    noticeBox.style.border = '1px solid #fecaca';
+                    noticeBox.innerHTML = `<b>Penyebab:</b> ${escapeHtml(lastFailedMessage)}`;
+                }
+            }
         }
 
     } catch (err) {
-        if (statusText) statusText.textContent = 'Terjadi kendala saat sinkronisasi.';
-        if (logBox) logBox.innerHTML += `<div style="color:#ef4444; margin-top:4px;">[ERROR SINKRONISASI] ${escapeHtml(err.message)}</div>`;
+        if (spinnerAnim) spinnerAnim.style.display = 'none';
+        if (successIcon) {
+            successIcon.style.display = 'inline-flex';
+            successIcon.style.background = '#fef2f2';
+            successIcon.style.color = '#dc2626';
+            successIcon.innerHTML = '<span class="material-symbols-outlined" style="font-size: 36px;">error</span>';
+        }
+        if (statusText) statusText.textContent = 'Terjadi Kesalahan Koneksi';
+        if (detailText) detailText.textContent = err.message || 'Silakan coba lagi.';
     } finally {
         _isBatchSyncRunning = false;
         if (btnCancel) btnCancel.style.display = 'none';
@@ -1288,3 +1878,548 @@ function escapeHtml(str) {
         tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
 }
+
+// ==========================================
+// USER PROFILE MODAL & ACCOUNT SETTINGS
+// ==========================================
+async function openProfileModal() {
+    const modal = document.getElementById('profileModal');
+    if (!modal) return;
+
+    modal.classList.add('active');
+
+    // Reset alert box
+    const alertBox = document.getElementById('profileAlert');
+    if (alertBox) {
+        alertBox.style.display = 'none';
+        alertBox.textContent = '';
+    }
+
+    // Reset password inputs
+    const pwdCur = document.getElementById('profileInputCurrentPassword');
+    const pwdNew = document.getElementById('profileInputNewPassword');
+    const pwdConf = document.getElementById('profileInputConfirmPassword');
+    if (pwdCur) pwdCur.value = '';
+    if (pwdNew) pwdNew.value = '';
+    if (pwdConf) pwdConf.value = '';
+
+    // Fetch fresh profile data
+    try {
+        const res = await fetch('api/users.php?action=get_profile&_t=' + Date.now());
+        const data = await parseResponseJson(res);
+        if (data.success && data.user) {
+            const u = data.user;
+            const inputName = document.getElementById('profileInputName');
+            const inputUsername = document.getElementById('profileInputUsername');
+            const heroName = document.getElementById('modalHeroName');
+            const heroUsername = document.getElementById('modalHeroUsername');
+            const heroCreated = document.getElementById('modalHeroCreated');
+
+            if (inputName) inputName.value = u.name || '';
+            if (inputUsername) inputUsername.value = u.username || '';
+            if (heroName) heroName.textContent = u.name || '';
+            if (heroUsername) heroUsername.textContent = '@' + (u.username || '');
+            if (heroCreated && u.created_at) {
+                const d = new Date(u.created_at);
+                if (!isNaN(d.getTime())) {
+                    const formatted = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                    heroCreated.textContent = 'Terdaftar: ' + formatted;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Gagal memuat detail profil terkini:', e);
+    }
+}
+
+function closeProfileModal() {
+    const modal = document.getElementById('profileModal');
+    if (modal) modal.classList.remove('active');
+
+    const alertBox = document.getElementById('profileAlert');
+    if (alertBox) {
+        alertBox.style.display = 'none';
+        alertBox.textContent = '';
+    }
+
+    const pwdCur = document.getElementById('profileInputCurrentPassword');
+    const pwdNew = document.getElementById('profileInputNewPassword');
+    const pwdConf = document.getElementById('profileInputConfirmPassword');
+    if (pwdCur) pwdCur.value = '';
+    if (pwdNew) pwdNew.value = '';
+    if (pwdConf) pwdConf.value = '';
+}
+
+function togglePasswordVisibility(inputId, btnEl) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+
+    const icon = btnEl ? btnEl.querySelector('.material-symbols-outlined') : null;
+    if (icon) {
+        icon.textContent = isPassword ? 'visibility_off' : 'visibility';
+    }
+}
+
+async function handleUpdateProfile(event) {
+    if (event) event.preventDefault();
+
+    const form = document.getElementById('profileEditForm');
+    const submitBtn = document.getElementById('btnSaveProfile');
+    const alertBox = document.getElementById('profileAlert');
+
+    const nameInput = document.getElementById('profileInputName');
+    const usernameInput = document.getElementById('profileInputUsername');
+    const currentPwdInput = document.getElementById('profileInputCurrentPassword');
+    const newPwdInput = document.getElementById('profileInputNewPassword');
+    const confirmPwdInput = document.getElementById('profileInputConfirmPassword');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const currentPassword = currentPwdInput ? currentPwdInput.value : '';
+    const newPassword = newPwdInput ? newPwdInput.value : '';
+    const confirmPassword = confirmPwdInput ? confirmPwdInput.value : '';
+
+    function showAlertMessage(msg, type) {
+        if (!alertBox) return;
+        alertBox.style.display = 'block';
+        if (type === 'error') {
+            alertBox.style.background = '#fef2f2';
+            alertBox.style.border = '1px solid #fecaca';
+            alertBox.style.color = '#b91c1c';
+        } else {
+            alertBox.style.background = '#f0fdf4';
+            alertBox.style.border = '1px solid #bbf7d0';
+            alertBox.style.color = '#15803d';
+        }
+        alertBox.textContent = msg;
+    }
+
+    if (!name || !username) {
+        showAlertMessage('Nama lengkap dan Username wajib diisi.', 'error');
+        return;
+    }
+
+    // Validasi ganti password jika salah satu diisi
+    if (newPassword || currentPassword || confirmPassword) {
+        if (!currentPassword) {
+            showAlertMessage('Masukkan Password Saat Ini untuk mengonfirmasi penggantian password.', 'error');
+            if (currentPwdInput) currentPwdInput.focus();
+            return;
+        }
+        if (newPassword.length < 5) {
+            showAlertMessage('Password baru minimal harus 5 karakter.', 'error');
+            if (newPwdInput) newPwdInput.focus();
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            showAlertMessage('Konfirmasi password baru tidak cocok dengan password baru.', 'error');
+            if (confirmPwdInput) confirmPwdInput.focus();
+            return;
+        }
+    }
+
+    if (alertBox) alertBox.style.display = 'none';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span class="material-symbols-outlined spin" style="font-size: 18px;">sync</span> <span>Menyimpan...</span>`;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('username', username);
+        if (currentPassword) formData.append('current_password', currentPassword);
+        if (newPassword) formData.append('new_password', newPassword);
+        if (confirmPassword) formData.append('confirm_password', confirmPassword);
+
+        const res = await fetch('api/users.php?action=update_profile', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await parseResponseJson(res);
+
+        if (data.success) {
+            showAdminToast(data.message, 'success');
+            showAlertMessage(data.message, 'success');
+
+            // Perbarui tampilan sidebar dan hero modal secara dinamis
+            const sidebarName = document.getElementById('sidebarUserName');
+            const sidebarHandle = document.querySelector('.user-profile-handle');
+            const heroName = document.getElementById('modalHeroName');
+            const heroUsername = document.getElementById('modalHeroUsername');
+
+            if (sidebarName) sidebarName.textContent = name;
+            if (sidebarHandle) sidebarHandle.textContent = '@' + username;
+            if (heroName) heroName.textContent = name;
+            if (heroUsername) heroUsername.textContent = '@' + username;
+
+            // Kosongkan kolom password setelah berhasil
+            if (currentPwdInput) currentPwdInput.value = '';
+            if (newPwdInput) newPwdInput.value = '';
+            if (confirmPwdInput) confirmPwdInput.value = '';
+
+            // Tutup modal setelah jeda singkat agar user melihat feedback
+            setTimeout(() => {
+                closeProfileModal();
+            }, 1200);
+        } else {
+            showAdminToast(data.message, 'error');
+            showAlertMessage(data.message || 'Gagal memperbarui profil.', 'error');
+        }
+    } catch (err) {
+        console.error('Error saat update profile:', err);
+        showAdminToast('Terjadi kesalahan saat menyimpan profil.', 'error');
+        showAlertMessage('Terjadi kesalahan jaringan. Silakan coba lagi.', 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 18px;">save</span> <span>Simpan Perubahan</span>`;
+        }
+    }
+}
+
+// Backdrop modal click listener
+document.addEventListener('click', (e) => {
+    const profileModal = document.getElementById('profileModal');
+    if (profileModal && e.target === profileModal) {
+        closeProfileModal();
+    }
+});
+
+// Escape key listener for profile modal
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const profileModal = document.getElementById('profileModal');
+        if (profileModal && profileModal.classList.contains('active')) {
+            closeProfileModal();
+        }
+        const pinModal = document.getElementById('setPinModal');
+        if (pinModal && pinModal.classList.contains('active')) {
+            closeSetPinModal();
+        }
+    }
+});
+
+// ==========================================
+// PIN MODAL — SET PIN FOR OPERATOR
+// ==========================================
+
+let _pinUserId   = null;
+let _pinUserName = '';
+let _pinValue    = '';
+const PIN_LENGTH = 4;
+
+function openSetPinModal(userId, userName) {
+    _pinUserId   = userId;
+    _pinUserName = userName;
+    _pinValue    = '';
+
+    const subtitle = document.getElementById('pinModalSubtitle');
+    if (subtitle) subtitle.textContent = `Atur PIN untuk: ${userName}`;
+
+    _renderPinDots();
+    _clearPinError();
+
+    const modal = document.getElementById('setPinModal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeSetPinModal() {
+    _pinValue = '';
+    _renderPinDots();
+    _clearPinError();
+    const modal = document.getElementById('setPinModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function _renderPinDots() {
+    for (let i = 0; i < PIN_LENGTH; i++) {
+        const dot = document.getElementById('pinDot' + i);
+        if (!dot) continue;
+        dot.classList.remove('filled', 'error');
+        if (i < _pinValue.length) dot.classList.add('filled');
+    }
+}
+
+function _clearPinError() {
+    const errEl = document.getElementById('pinErrorMsg');
+    if (errEl) errEl.textContent = '';
+    for (let i = 0; i < PIN_LENGTH; i++) {
+        const dot = document.getElementById('pinDot' + i);
+        if (dot) dot.classList.remove('error');
+    }
+}
+
+function _showPinError(msg) {
+    const errEl = document.getElementById('pinErrorMsg');
+    if (errEl) errEl.textContent = msg;
+    for (let i = 0; i < PIN_LENGTH; i++) {
+        const dot = document.getElementById('pinDot' + i);
+        if (dot) { dot.classList.add('error'); dot.classList.remove('filled'); }
+    }
+    setTimeout(() => {
+        _pinValue = '';
+        _clearPinError();
+        _renderPinDots();
+    }, 900);
+}
+
+// Wire up numpad buttons for Set PIN modal
+document.addEventListener('DOMContentLoaded', () => {
+    // Set PIN Modal numpad keys
+    document.querySelectorAll('#setPinModal .pin-key').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const key = btn.getAttribute('data-key');
+            if (key === '⌫') {
+                _pinValue = _pinValue.slice(0, -1);
+            } else if (key !== '' && _pinValue.length < PIN_LENGTH) {
+                _pinValue += key;
+            }
+            _clearPinError();
+            _renderPinDots();
+        });
+    });
+
+    // Edit User Modal PIN numpad keys
+    document.querySelectorAll('#editUserModal .edit-pin-key').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const key = btn.getAttribute('data-key');
+            if (key === '⌫') {
+                _editPinValue = _editPinValue.slice(0, -1);
+            } else if (key !== '' && _editPinValue.length < EDIT_PIN_LENGTH) {
+                _editPinValue += key;
+            }
+            const err = document.getElementById('editPinErrorMsg');
+            if (err) err.textContent = '';
+            _renderEditPinDots();
+        });
+    });
+});
+
+async function submitSetPin() {
+    if (_pinValue.length < PIN_LENGTH) {
+        _showPinError(`PIN harus ${PIN_LENGTH} digit!`);
+        return;
+    }
+
+    const btn = document.getElementById('btnSavePinSubmit');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:17px;animation:spin 0.8s linear infinite;">progress_activity</span><span>Menyimpan...</span>'; }
+
+    try {
+        const fd = new FormData();
+        fd.append('id', _pinUserId);
+        fd.append('pin', _pinValue);
+
+        const res  = await fetch('api/users.php?action=set_pin', { method: 'POST', body: fd });
+        const data = await parseResponseJson(res);
+
+        if (data.success) {
+            showAdminToast(data.message, 'success');
+            closeSetPinModal();
+            loadUsersTable();
+        } else {
+            _showPinError(data.message || 'Gagal menyimpan PIN.');
+        }
+    } catch (e) {
+        _showPinError('Kesalahan jaringan.');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:17px;">lock_reset</span><span>Simpan PIN</span>'; }
+    }
+}
+
+// ==========================================
+// EDIT USER MODAL (NAMA, PASSWORD / PIN)
+// ==========================================
+
+let _editUserId = null;
+let _editUserRole = '';
+let _editPinValue = '';
+const EDIT_PIN_LENGTH = 4;
+
+function openEditUserModal(id, name, username, role, hasPin) {
+    _editUserId = id;
+    _editUserRole = role;
+    _editPinValue = '';
+
+    const idInput = document.getElementById('editUserId');
+    const roleInput = document.getElementById('editUserRole');
+    const nameInput = document.getElementById('editUserName');
+    const userInput = document.getElementById('editUserUsername');
+
+    if (idInput) idInput.value = id;
+    if (roleInput) roleInput.value = role;
+    if (nameInput) nameInput.value = name;
+    if (userInput) userInput.value = username;
+
+    // Reset alert
+    const alertEl = document.getElementById('editUserAlert');
+    if (alertEl) { alertEl.style.display = 'none'; alertEl.className = ''; alertEl.textContent = ''; }
+
+    // Subtitle
+    const sub = document.getElementById('editUserSubtitle');
+    const roleBadgeHtml = (role === 'superadmin') ? '<span class="badge-role-superadmin" style="font-size:0.68rem; padding:1px 6px;">SUPERADMIN</span>' :
+                          (role === 'admin' ? '<span class="badge-role-admin" style="font-size:0.68rem; padding:1px 6px;">ADMIN</span>' :
+                          '<span class="badge-role-operator" style="font-size:0.68rem; padding:1px 6px;">OPERATOR</span>');
+    if (sub) sub.innerHTML = `@${escapeHtml(username)} &bull; ${roleBadgeHtml}`;
+
+    const pinSec = document.getElementById('editUserPinSection');
+    const pwdSec = document.getElementById('editUserPasswordSection');
+
+    if (role === 'operator') {
+        if (pinSec) pinSec.style.display = 'block';
+        if (pwdSec) pwdSec.style.display = 'none';
+
+        const pinBadge = document.getElementById('editUserPinStatusBadge');
+        if (pinBadge) {
+            pinBadge.innerHTML = (hasPin === 1)
+                ? '<span style="color:#6366f1; font-weight:700; background:rgba(99,102,241,0.1); padding:2px 8px; border-radius:10px;">PIN Aktif ✓</span>'
+                : '<span style="color:#94a3b8; font-weight:600; background:rgba(148,163,184,0.1); padding:2px 8px; border-radius:10px;">Belum Ada PIN</span>';
+        }
+        _clearEditPinInput();
+    } else {
+        if (pinSec) pinSec.style.display = 'none';
+        if (pwdSec) pwdSec.style.display = 'block';
+
+        const p1 = document.getElementById('editUserPassword');
+        const p2 = document.getElementById('editUserConfirmPassword');
+        if (p1) p1.value = '';
+        if (p2) p2.value = '';
+    }
+
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeEditUserModal() {
+    _editUserId = null;
+    _editUserRole = '';
+    _editPinValue = '';
+    _clearEditPinInput();
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function _clearEditPinInput() {
+    _editPinValue = '';
+    _renderEditPinDots();
+    const err = document.getElementById('editPinErrorMsg');
+    if (err) err.textContent = '';
+}
+
+function _renderEditPinDots() {
+    for (let i = 0; i < EDIT_PIN_LENGTH; i++) {
+        const dot = document.getElementById('editPinDot' + i);
+        if (!dot) continue;
+        dot.classList.remove('filled', 'error');
+        if (i < _editPinValue.length) dot.classList.add('filled');
+    }
+}
+
+function _showEditPinError(msg) {
+    const err = document.getElementById('editPinErrorMsg');
+    if (err) err.textContent = msg;
+    for (let i = 0; i < EDIT_PIN_LENGTH; i++) {
+        const dot = document.getElementById('editPinDot' + i);
+        if (dot) { dot.classList.add('error'); dot.classList.remove('filled'); }
+    }
+    setTimeout(() => {
+        _editPinValue = '';
+        _renderEditPinDots();
+        if (err) err.textContent = '';
+    }, 900);
+}
+
+async function handleSaveEditUser(e) {
+    e.preventDefault();
+
+    const id = document.getElementById('editUserId').value;
+    const name = document.getElementById('editUserName').value.trim();
+    const username = document.getElementById('editUserUsername').value.trim();
+    const role = _editUserRole;
+
+    if (!name) {
+        showEditUserAlert('Nama lengkap wajib diisi.', 'error');
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append('id', id);
+    fd.append('name', name);
+    fd.append('username', username);
+
+    if (role === 'operator') {
+        if (_editPinValue.length > 0) {
+            if (_editPinValue.length < EDIT_PIN_LENGTH) {
+                _showEditPinError(`PIN harus ${EDIT_PIN_LENGTH} digit angka!`);
+                return;
+            }
+            fd.append('pin', _editPinValue);
+        }
+    } else {
+        const newPwd = document.getElementById('editUserPassword').value;
+        const confirmPwd = document.getElementById('editUserConfirmPassword').value;
+
+        if (newPwd || confirmPwd) {
+            if (newPwd.length < 5) {
+                showEditUserAlert('Password baru minimal 5 karakter.', 'error');
+                return;
+            }
+            if (newPwd !== confirmPwd) {
+                showEditUserAlert('Konfirmasi password baru tidak cocok.', 'error');
+                return;
+            }
+            fd.append('new_password', newPwd);
+        }
+    }
+
+    const btn = document.getElementById('btnSaveEditUser');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px; animation:spin 0.8s linear infinite;">progress_activity</span><span>Menyimpan...</span>';
+    }
+
+    try {
+        const res = await fetch('api/users.php?action=update_user', {
+            method: 'POST',
+            body: fd
+        });
+        const data = await parseResponseJson(res);
+
+        if (data.success) {
+            showAdminToast(data.message || 'Data pengguna berhasil diperbarui.', 'success');
+            closeEditUserModal();
+            loadUsersTable();
+        } else {
+            showEditUserAlert(data.message || 'Gagal memperbarui pengguna.', 'error');
+        }
+    } catch (err) {
+        showEditUserAlert('Terjadi kesalahan jaringan.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;">save</span><span>Simpan Perubahan</span>';
+        }
+    }
+}
+
+function showEditUserAlert(msg, type) {
+    const alertEl = document.getElementById('editUserAlert');
+    if (!alertEl) return;
+    alertEl.style.display = 'block';
+    alertEl.textContent = msg;
+    if (type === 'error') {
+        alertEl.style.background = '#fef2f2';
+        alertEl.style.color = '#dc2626';
+        alertEl.style.border = '1px solid #fecaca';
+    } else {
+        alertEl.style.background = '#f0fdf4';
+        alertEl.style.color = '#16a34a';
+        alertEl.style.border = '1px solid #bbf7d0';
+    }
+}
+
+

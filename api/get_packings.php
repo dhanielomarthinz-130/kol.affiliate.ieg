@@ -51,10 +51,30 @@ if (!empty($dateTo)) {
 
 $whereSql = !empty($whereClauses) ? "WHERE " . implode(" AND ", $whereClauses) : "";
 
-// Count total
-$countStmt = $db->prepare("SELECT COUNT(*) as total FROM packings {$whereSql}");
-$countStmt->execute($params);
-$totalRows = $countStmt->fetch()['total'];
+// Aggregates based on active filter
+$aggStmt = $db->prepare("SELECT 
+    COUNT(*) as total_filter, 
+    COALESCE(AVG(duration_seconds), 0) as avg_duration, 
+    COALESCE(SUM(video_filesize), 0) as total_storage 
+    FROM packings {$whereSql}");
+$aggStmt->execute($params);
+$agg = $aggStmt->fetch();
+
+$totalRows = intval($agg['total_filter'] ?? 0);
+$avgDur = round($agg['avg_duration'] ?? 0);
+$storageBytes = floatval($agg['total_storage'] ?? 0);
+
+if ($storageBytes >= 1073741824) {
+    $storageFormatted = round($storageBytes / 1073741824, 2) . ' GB';
+} elseif ($storageBytes >= 1048576) {
+    $storageFormatted = round($storageBytes / 1048576, 2) . ' MB';
+} elseif ($storageBytes >= 1024) {
+    $storageFormatted = round($storageBytes / 1024, 1) . ' KB';
+} else {
+    $storageFormatted = $storageBytes . ' B';
+}
+
+$formattedAvg = ($avgDur > 60) ? (floor($avgDur / 60) . 'm ' . ($avgDur % 60) . 's') : ($avgDur . 's');
 
 // Sorting column and direction
 $sortBy = trim($_GET['sort_by'] ?? 'id');
@@ -96,11 +116,19 @@ $stmtToday->execute([$todayDate]);
 $todayTotal = intval($stmtToday->fetch()['cnt'] ?? 0);
 
 echo json_encode([
-    'success' => true,
-    'total' => $totalRows,
+    'success'     => true,
+    'total'       => $totalRows,
     'today_total' => $todayTotal,
-    'page' => $page,
-    'limit' => $limit,
+    'page'        => $page,
+    'limit'       => $limit,
     'total_pages' => ceil($totalRows / $limit),
-    'data' => $rows
+    'data'        => $rows,
+    'stats'       => [
+        'total'          => $totalRows,
+        'avg_duration'   => $avgDur,
+        'formatted_avg'  => $formattedAvg,
+        'storage'        => $storageFormatted,
+        'today_packings' => $todayTotal,
+        'today_count'    => $todayTotal
+    ]
 ]);
