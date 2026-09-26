@@ -47,7 +47,7 @@ $ffmpegBin = realpath(__DIR__ . '/bin/ffmpeg.exe') ?: 'ffmpeg';
 
 if (!file_exists($mp4Path) && function_exists('exec')) {
     $cmd = sprintf(
-        '"%s" -y -i %s -vcodec libx264 -crf 26 -preset fast -pix_fmt yuv420p -acodec aac -b:a 64k -movflags +faststart %s 2>&1',
+        '"%s" -y -i %s -vcodec libx264 -crf 21 -preset fast -pix_fmt yuv420p -acodec aac -b:a 96k -movflags +faststart %s 2>&1',
         $ffmpegBin,
         escapeshellarg($filePath),
         escapeshellarg($mp4Path)

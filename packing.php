@@ -133,7 +133,11 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                         <select id="cameraSelect" class="select-input" style="max-width: 280px;">
                             <option value="">Memuat perangkat kamera...</option>
                         </select>
-                        <input type="hidden" id="qualitySelect" value="saver">
+                        <select id="qualitySelect" class="select-input" style="max-width: 175px; font-weight: 500;" title="Pilih Kualitas Video Rekaman">
+                            <option value="hd" selected>🌟 HD Jernih (Default)</option>
+                            <option value="ultra">💎 Ultra HD 1080p</option>
+                            <option value="saver">⚡ Hemat Penyimpanan</option>
+                        </select>
                     </div>
                 </div>
 

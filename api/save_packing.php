@@ -107,9 +107,17 @@ try {
     $insertId = $db->lastInsertId();
 
     // Baca quality_mode SEBELUM flush (setelah flush POST tidak bisa dibaca)
-    $qualityMode  = trim($_POST['quality_mode'] ?? 'saver');
-    $crf          = ($qualityMode === 'saver') ? '28' : '25';
-    $audioBitrate = ($qualityMode === 'saver') ? '32k' : '64k';
+    $qualityMode  = trim($_POST['quality_mode'] ?? 'hd');
+    if ($qualityMode === 'ultra') {
+        $crf          = '20';
+        $audioBitrate = '128k';
+    } elseif ($qualityMode === 'saver') {
+        $crf          = '26';
+        $audioBitrate = '48k';
+    } else { // hd (default)
+        $crf          = '22';
+        $audioBitrate = '96k';
+    }
 
     // Kirim response sukses ke client SEBELUM FFmpeg
     echo json_encode([

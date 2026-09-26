@@ -152,9 +152,9 @@ class PackingStation {
             const constraints = {
                 video: {
                     deviceId: deviceId ? { exact: deviceId } : undefined,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    frameRate: { ideal: 25 }
+                    width: { ideal: 1920, min: 1280 },
+                    height: { ideal: 1080, min: 720 },
+                    frameRate: { ideal: 30, min: 24 }
                 },
                 audio: true // Sertakan mic jika ada untuk verifikasi packing bersuara
             };
@@ -187,6 +187,19 @@ class PackingStation {
             }
             this.startStream(e.target.value);
         });
+
+        // Video Quality Selector & preference memory
+        const qualitySelectEl = document.getElementById('qualitySelect');
+        if (qualitySelectEl) {
+            const savedQuality = localStorage.getItem('kol_video_quality');
+            if (savedQuality) {
+                qualitySelectEl.value = savedQuality;
+            }
+            qualitySelectEl.addEventListener('change', (e) => {
+                localStorage.setItem('kol_video_quality', e.target.value);
+                this.showToast(`Kualitas video diatur ke: ${e.target.options[e.target.selectedIndex].text}`, 'info');
+            });
+        }
 
         // Barcode / Resi Scanner Enter
         this.resiInput.addEventListener('keydown', (e) => {
@@ -348,13 +361,20 @@ class PackingStation {
             options = { mimeType: 'video/webm' };
         }
 
-        // Check quality mode (Saver ~400KB vs HD ~1.4MB)
+        // Check quality mode (Saver ~1.2Mbps, HD Jernih ~2.5Mbps, Ultra FHD ~4.0Mbps)
         const qualitySelect = document.getElementById('qualitySelect');
-        const isSaver = qualitySelect ? qualitySelect.value === 'saver' : true;
+        const qualityVal = qualitySelect ? qualitySelect.value : 'hd';
 
-        // Set bitrate accordingly
-        options.videoBitsPerSecond = isSaver ? 420000 : 850000;
-        options.audioBitsPerSecond = isSaver ? 32000 : 64000;
+        if (qualityVal === 'ultra') {
+            options.videoBitsPerSecond = 4000000; // 4.0 Mbps - Ultra HD 1080p
+            options.audioBitsPerSecond = 128000;
+        } else if (qualityVal === 'saver') {
+            options.videoBitsPerSecond = 1200000; // 1.2 Mbps - Hemat tapi tetap jelas
+            options.audioBitsPerSecond = 48000;
+        } else { // 'hd' - Default
+            options.videoBitsPerSecond = 2500000; // 2.5 Mbps - HD Jernih & tajam
+            options.audioBitsPerSecond = 64000;
+        }
 
         try {
             this.mediaRecorder = new MediaRecorder(this.stream, options);
