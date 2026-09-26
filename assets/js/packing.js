@@ -858,3 +858,60 @@ window.closeVideoModal = function() {
 document.addEventListener('DOMContentLoaded', () => {
     window.station = new PackingStation();
 });
+
+// ==========================================
+// PREMIUM 6-BALLS SPINNER HELPERS (Operator)
+// ==========================================
+function getPremiumSpinnerHtml(text = 'Memuat data...', size = '') {
+    const sizeClass = size ? ` ${size}` : '';
+    return `
+        <div class="spinner-container">
+            <div class="premium-balls-spinner${sizeClass}">
+                <div class="spinner-ball ball-1"></div>
+                <div class="spinner-ball ball-2"></div>
+                <div class="spinner-ball ball-3"></div>
+                <div class="spinner-ball ball-4"></div>
+                <div class="spinner-ball ball-5"></div>
+                <div class="spinner-ball ball-6"></div>
+            </div>
+            ${text ? `<div class="spinner-loading-text">${text}</div>` : ''}
+        </div>
+    `;
+}
+
+function showGlobalLoading(text = 'Memproses...') {
+    let overlay = document.getElementById('globalLoadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'globalLoadingOverlay';
+        overlay.className = 'global-loading-overlay';
+        overlay.innerHTML = `
+            <div class="premium-balls-spinner">
+                <div class="spinner-ball ball-1"></div>
+                <div class="spinner-ball ball-2"></div>
+                <div class="spinner-ball ball-3"></div>
+                <div class="spinner-ball ball-4"></div>
+                <div class="spinner-ball ball-5"></div>
+                <div class="spinner-ball ball-6"></div>
+            </div>
+            <div id="globalLoadingText" style="font-size: 0.94rem; font-weight: 700; color: #0f172a; text-align: center; max-width: 320px; line-height: 1.45;">${text}</div>
+        `;
+        document.body.appendChild(overlay);
+    } else {
+        const textEl = document.getElementById('globalLoadingText');
+        if (textEl) textEl.textContent = text;
+    }
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => overlay.classList.add('active'));
+}
+
+function hideGlobalLoading() {
+    const overlay = document.getElementById('globalLoadingOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+        setTimeout(() => {
+            if (!overlay.classList.contains('active')) overlay.style.display = 'none';
+        }, 250);
+    }
+}
+

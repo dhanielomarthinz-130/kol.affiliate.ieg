@@ -2243,6 +2243,64 @@ html, body {
     100% { transform: rotate(360deg); }
 }
 
+.spinner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 2.25rem 1rem;
+    width: 100%;
+}
+
+.spinner-loading-text {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    letter-spacing: -0.01em;
+    text-align: center;
+}
+
+.premium-balls-spinner.spinner-sm {
+    transform: scale(0.68);
+    margin: 4px auto;
+}
+
+.premium-balls-spinner.spinner-xs {
+    transform: scale(0.48);
+    margin: 0 auto;
+}
+
+/* Global Fullscreen Loading Overlay */
+.global-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    z-index: 999999;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.global-loading-overlay.active {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+
 /* ==============================================================
    MAINTENANCE STATUS INDICATORS (GLOBAL & CARD)
    ============================================================== */

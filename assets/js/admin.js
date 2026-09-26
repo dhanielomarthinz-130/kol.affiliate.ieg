@@ -32,6 +32,66 @@ async function parseResponseJson(res) {
 }
 
 // ==========================================
+// PREMIUM 6-BALLS SPINNER HELPERS
+// ==========================================
+function getPremiumSpinnerHtml(text = 'Memuat data...', size = '') {
+    const sizeClass = size ? ` ${size}` : '';
+    return `
+        <div class="spinner-container">
+            <div class="premium-balls-spinner${sizeClass}">
+                <div class="spinner-ball ball-1"></div>
+                <div class="spinner-ball ball-2"></div>
+                <div class="spinner-ball ball-3"></div>
+                <div class="spinner-ball ball-4"></div>
+                <div class="spinner-ball ball-5"></div>
+                <div class="spinner-ball ball-6"></div>
+            </div>
+            ${text ? `<div class="spinner-loading-text">${text}</div>` : ''}
+        </div>
+    `;
+}
+
+function getTableLoadingHtml(colspan = 8, text = 'Memuat data...') {
+    return `<tr><td colspan="${colspan}" style="text-align:center; padding: 2.5rem 1rem;">${getPremiumSpinnerHtml(text)}</td></tr>`;
+}
+
+function showGlobalLoading(text = 'Memproses data, harap tunggu...') {
+    let overlay = document.getElementById('globalLoadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'globalLoadingOverlay';
+        overlay.className = 'global-loading-overlay';
+        overlay.innerHTML = `
+            <div class="premium-balls-spinner">
+                <div class="spinner-ball ball-1"></div>
+                <div class="spinner-ball ball-2"></div>
+                <div class="spinner-ball ball-3"></div>
+                <div class="spinner-ball ball-4"></div>
+                <div class="spinner-ball ball-5"></div>
+                <div class="spinner-ball ball-6"></div>
+            </div>
+            <div id="globalLoadingText" style="font-size: 0.94rem; font-weight: 700; color: #0f172a; text-align: center; max-width: 320px; line-height: 1.45;">${escapeHtml(text)}</div>
+        `;
+        document.body.appendChild(overlay);
+    } else {
+        const textEl = document.getElementById('globalLoadingText');
+        if (textEl) textEl.textContent = text;
+    }
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => overlay.classList.add('active'));
+}
+
+function hideGlobalLoading() {
+    const overlay = document.getElementById('globalLoadingOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+        setTimeout(() => {
+            if (!overlay.classList.contains('active')) overlay.style.display = 'none';
+        }, 250);
+    }
+}
+
+// ==========================================
 // BROWSER URL STATE SYNCHRONIZATION
 // ==========================================
 function syncUrlWithState(replace = true) {
@@ -507,7 +567,7 @@ async function loadPackings(page = 1) {
     const tableBody = document.getElementById('packingsTableBody');
     if (!tableBody) return;
 
-    tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:#94a3b8;">Memuat data packaging...</td></tr>`;
+    tableBody.innerHTML = getTableLoadingHtml(8, 'Memuat data packaging...');
 
     const filters = getActiveFilterParams();
     const params = new URLSearchParams(Object.assign({
@@ -663,7 +723,7 @@ async function loadUsersTable() {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">Memuat data operator &amp; pengguna...</td></tr>`;
+    tbody.innerHTML = getTableLoadingHtml(7, 'Memuat data operator &amp; pengguna...');
 
     try {
         const res = await fetch('api/users.php?action=list');
@@ -820,14 +880,7 @@ async function loadDbTablesList() {
     const tbody = document.getElementById('dbTablesMasterBody');
     if (!tbody) return;
 
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="4" style="padding:22px; text-align:center; color:#94a3b8; font-size:0.82rem;">
-                <span class="material-symbols-outlined" style="vertical-align:middle; font-size:18px; animation:spin 1s linear infinite;">sync</span>
-                <span style="margin-left:6px;">Mengambil daftar tabel database...</span>
-            </td>
-        </tr>
-    `;
+    tbody.innerHTML = getTableLoadingHtml(4, 'Mengambil daftar tabel database (SQLite)...');
 
     try {
         const res  = await fetch('api/db_manager.php?action=list_tables&_t=' + Date.now());
@@ -929,10 +982,10 @@ async function loadDbModalTable(tableName) {
 
     if (!headEl || !bodyEl) return;
 
-    if (countEl) countEl.innerHTML = '<span style="color:#64748b;">⏳ Mengambil data...</span>';
+    if (countEl) countEl.innerHTML = '<span style="color:#64748b;">Mengambil data...</span>';
     if (emptyEl) emptyEl.style.display = 'none';
-    headEl.innerHTML = '<tr><th style="padding:10px 14px; color:#94a3b8; font-size:0.75rem; text-align:center;">⏳ Memuat...</th></tr>';
-    bodyEl.innerHTML = '';
+    headEl.innerHTML = '';
+    bodyEl.innerHTML = getTableLoadingHtml(1, 'Mengambil data isi tabel database...');
 
     try {
         const res  = await fetch(`api/db_manager.php?action=get_table&table=${encodeURIComponent(tableName)}&_t=` + Date.now());
@@ -1362,6 +1415,7 @@ async function runOptimizeDB() {
         btn.disabled = true;
         btn.innerHTML = `<span class="material-symbols-outlined spin" style="font-size:16px;">sync</span> <span>Mengoptimalkan...</span>`;
     }
+    showGlobalLoading('Mengoptimalkan database SQLite (VACUUM & ANALYZE)...');
 
     try {
         const res = await fetch('api/maintenance.php?action=optimize_db', { method: 'POST' });
@@ -1375,6 +1429,7 @@ async function runOptimizeDB() {
     } catch (e) {
         showAdminToast('Kesalahan jaringan saat optimasi DB: ' + e.message, 'error');
     } finally {
+        hideGlobalLoading();
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = `<span class="material-symbols-outlined">speed</span> <span>Jalankan Optimasi Database</span>`;
@@ -1390,6 +1445,7 @@ async function runCleanTempFiles() {
         btn.disabled = true;
         btn.innerHTML = `<span class="material-symbols-outlined spin" style="font-size:16px;">sync</span> <span>Membersihkan...</span>`;
     }
+    showGlobalLoading('Membersihkan file sampah dan rekaman video 0-byte...');
 
     try {
         const res = await fetch('api/maintenance.php?action=clean_temp', { method: 'POST' });
@@ -1403,6 +1459,7 @@ async function runCleanTempFiles() {
     } catch (e) {
         showAdminToast('Kesalahan pembersihan: ' + e.message, 'error');
     } finally {
+        hideGlobalLoading();
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = `<span class="material-symbols-outlined">cleaning_services</span> <span>Bersihkan File Sampah Sekarang</span>`;
