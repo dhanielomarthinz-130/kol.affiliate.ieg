@@ -525,7 +525,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <select name="username" id="pinUsernameSelect" class="form-input" style="appearance:none; -webkit-appearance:none; cursor:pointer; text-overflow:ellipsis; white-space:nowrap; padding-right:2.5rem;">
                                 <?php foreach ($operators as $op): ?>
                                     <option value="<?= htmlspecialchars($op['username']) ?>">
-                                        <?= htmlspecialchars($op['name']) ?> (<?= htmlspecialchars($op['username']) ?>)
+                                        <?= htmlspecialchars($op['name']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
