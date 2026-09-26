@@ -148,25 +148,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         /* Brand */
         .login-brand {
             text-align: center;
-            margin-bottom: 1.45rem;
+            margin-bottom: 1.35rem;
         }
-
-        .login-icon {
-            width: 58px;
-            height: 58px;
-            margin: 0 auto 0.95rem;
-            border-radius: 16px;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            box-shadow:
-                0 10px 22px -4px rgba(37, 99, 235, 0.38),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .login-card:hover .login-icon { transform: scale(1.06) rotate(-2deg); }
 
         .login-title {
             font-size: 1.55rem;
@@ -437,9 +420,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Brand -->
             <div class="login-brand">
-                <div class="login-icon">
-                    <span class="material-symbols-outlined" style="font-size:27px;">inventory_2</span>
-                </div>
                 <h1 class="login-title">KOL Packing</h1>
                 <p class="login-subtitle">Perekaman &amp; Audit Otomatis Video Packaging</p>
             </div>
