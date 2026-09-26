@@ -109,7 +109,7 @@ try {
                         <a href="javascript:void(0)" class="nav-link" id="navMaintenance" onclick="switchAdminView('maintenance')">
                             <span class="material-symbols-outlined" style="color: #f59e0b;">build_circle</span>
                             <span>Maintenance</span>
-                            <span class="nav-badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; font-weight: 800;">SUPER</span>
+                            <span class="nav-badge badge-maint-sidebar-normal" id="sidebarMaintBadge">SUPER</span>
                         </a>
 
                         <button type="button" class="nav-link" onclick="openGoogleSyncModal()">
@@ -151,12 +151,47 @@ try {
         <main class="main-viewport">
             
             <!-- Page Top Bar -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px;">
                 <div>
                     <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; letter-spacing: -0.02em;" id="mainPageTitle">
                         <span class="material-symbols-outlined" style="font-size: 26px; color: var(--primary);">table_view</span>
                         <span>Semua Data Hasil Packaging</span>
                     </h1>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <!-- Maintenance Status Indicator Pill -->
+                    <div id="topbarMaintChip" class="topbar-status-chip normal" onclick="switchAdminView('maintenance')" title="Klik untuk membuka status & diagnosa sistem">
+                        <span class="dot" id="topbarMaintDot"></span>
+                        <span id="topbarMaintLabel">Sistem Normal</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Global Maintenance Active Alert Banner (Visible across all tabs when maintenance is on) -->
+            <div id="globalMaintenanceAlertBanner" style="display: none; background: #fff5f5; border: 1.5px solid #ef4444; border-radius: 12px; padding: 12px 18px; margin-bottom: 1.25rem; box-shadow: 0 4px 14px -2px rgba(239,68,68,0.15); align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="material-symbols-outlined" style="font-size: 28px; color: #dc2626; flex-shrink: 0; animation: maintPulseDot 1.2s infinite;">warning</span>
+                    <div>
+                        <div style="font-weight: 800; color: #991b1b; font-size: 0.92rem; display: flex; align-items: center; gap: 8px;">
+                            <span>MODE PEMELIHARAAN (MAINTENANCE) SEDANG AKTIF!</span>
+                            <span style="background: #dc2626; color: #fff; font-size: 0.65rem; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px;">Sistem Terkunci</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #b91c1c; margin-top: 2px;">
+                            Sistem terkunci untuk Operator &amp; Admin biasa. Hanya Superadmin <strong>Daniel</strong> yang dapat login dan beraktivitas.
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" onclick="switchAdminView('maintenance')" class="btn btn-sm btn-outline" style="border-color: #fca5a5; color: #991b1b; background: #fff; font-weight: 600;">
+                        Kelola
+                    </button>
+                    <?php if ($isSuperAdmin): ?>
+                    <button type="button" onclick="toggleMaintenanceMode()" class="btn btn-sm" style="background: #16a34a; color: #fff; border: none; font-weight: 700; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(22,163,74,0.35);">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">power_settings_new</span>
+                        <span>Matikan Maintenance Sekarang</span>
+                    </button>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -436,30 +471,30 @@ try {
                 </div>
 
                 <!-- ── MAINTENANCE MODE CONTROL ── -->
-                <div class="card" style="margin-bottom: 1.25rem; border-color: rgba(245,158,11,0.3);">
-                    <div class="card-header" style="background: linear-gradient(90deg, rgba(245,158,11,0.1), transparent); border-bottom-color: rgba(245,158,11,0.18);">
-                        <div class="card-title">
-                            <span class="material-symbols-outlined" style="color:#f59e0b;">construction</span>
-                            <span>Mode Pemeliharaan Sistem</span>
+                <div class="card maint-card-normal" id="maintModeCard" style="margin-bottom: 1.25rem; transition: all 0.3s ease;">
+                    <div class="card-header" id="maintModeCardHeader" style="background: linear-gradient(90deg, rgba(245,158,11,0.08), transparent); border-bottom: 1px solid rgba(226,232,240,0.8);">
+                        <div class="card-title" id="maintModeCardTitle" style="display:flex; align-items:center; gap:8px;">
+                            <span class="material-symbols-outlined" id="maintModeCardIcon" style="color:#10b981;">verified</span>
+                            <span id="maintModeCardTitleText" style="font-weight:700;">Status Operasional &amp; Mode Pemeliharaan</span>
                         </div>
                     </div>
                     <div class="card-body">
                         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1.25rem; flex-wrap:wrap;">
-                            <div style="flex:1; min-width:220px;">
+                            <div style="flex:1; min-width:260px;">
                                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-                                    <span style="font-weight:700; font-size:0.88rem; color:#0f172a;">Status:</span>
-                                    <span id="maintModeBadge" style="display:inline-flex; align-items:center; gap:6px; padding:3px 12px; border-radius:9999px; font-size:0.78rem; font-weight:700; background:rgba(16,185,129,0.12); color:#059669; border:1px solid rgba(16,185,129,0.3);">
-                                        <span id="maintModeDot" style="width:7px; height:7px; border-radius:50%; background:#10b981; display:inline-block;"></span>
-                                        <span id="maintModeLabel">Sistem Normal</span>
+                                    <span style="font-weight:700; font-size:0.88rem; color:#0f172a;">Status Saat Ini:</span>
+                                    <span id="maintModeBadge" style="display:inline-flex; align-items:center; gap:6px; padding:4px 14px; border-radius:9999px; font-size:0.8rem; font-weight:800; background:rgba(16,185,129,0.12); color:#059669; border:1px solid rgba(16,185,129,0.3);">
+                                        <span id="maintModeDot" style="width:8px; height:8px; border-radius:50%; background:#10b981; display:inline-block;"></span>
+                                        <span id="maintModeLabel">Sistem Normal (Aktif)</span>
                                     </span>
                                 </div>
-                                <p style="font-size:0.8rem; color:#64748b; line-height:1.5; max-width:480px;">
-                                    Saat aktif, hanya Superadmin <code style="background:#f1f5f9; padding:1px 6px; border-radius:4px; color:#4f46e5;">Daniel</code> yang bisa login. Pengguna lain diarahkan ke halaman pemberitahuan.
+                                <p id="maintModeDesc" style="font-size:0.82rem; color:#64748b; line-height:1.55; max-width:520px; margin:0;">
+                                    Sistem beroperasi secara normal. Seluruh operator dan admin dapat login dan menggunakan fitur packaging.
                                 </p>
                             </div>
                             <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0;">
-                                <button id="btnToggleMaintenance" onclick="toggleMaintenanceMode()" class="btn btn-sm" style="min-width:185px; display:flex; align-items:center; justify-content:center; gap:7px; padding:0.65rem 1.1rem; font-weight:700; border-radius:10px; background:linear-gradient(135deg,#d97706,#f59e0b); color:#fff; border:none; box-shadow:0 4px 14px -4px rgba(245,158,11,0.5);">
-                                    <span class="material-symbols-outlined" id="maintToggleIcon" style="font-size:17px;">power_settings_new</span>
+                                <button id="btnToggleMaintenance" onclick="toggleMaintenanceMode()" class="btn btn-sm" style="min-width:210px; display:flex; align-items:center; justify-content:center; gap:7px; padding:0.65rem 1.15rem; font-weight:700; font-size:0.82rem; border-radius:10px; background:linear-gradient(135deg,#d97706,#f59e0b); color:#fff; border:none; box-shadow:0 4px 14px -4px rgba(245,158,11,0.5);">
+                                    <span class="material-symbols-outlined" id="maintToggleIcon" style="font-size:18px;">power_settings_new</span>
                                     <span id="maintToggleLabel">Aktifkan Maintenance</span>
                                 </button>
                                 <span style="font-size:0.72rem; color:#94a3b8;" id="maintLastChanged">Memuat status...</span>

@@ -1,8 +1,8 @@
 {
-    "is_maintenance": true,
+    "is_maintenance": false,
     "allowed_username": "Daniel",
     "allowed_role": "superadmin",
     "message": "Sistem sedang dalam mode pemeliharaan (Maintenance). Hanya Superadmin (Daniel) yang diizinkan mengakses sistem.",
-    "updated_at": "2026-09-26 10:22:28",
-    "updated_by": "Daniel"
+    "updated_at": "2026-09-26 12:55:00",
+    "updated_by": "System"
 }

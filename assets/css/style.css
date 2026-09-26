@@ -2243,4 +2243,93 @@ html, body {
     100% { transform: rotate(360deg); }
 }
 
+/* ==============================================================
+   MAINTENANCE STATUS INDICATORS (GLOBAL & CARD)
+   ============================================================== */
+@keyframes maintPulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.85); }
+}
+
+@keyframes maintPulseBadge {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+    70% { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+}
+
+.topbar-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 13px;
+    border-radius: 9999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    user-select: none;
+}
+
+.topbar-status-chip.normal {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+    border-color: rgba(16, 185, 129, 0.25);
+}
+
+.topbar-status-chip.normal:hover {
+    background: rgba(16, 185, 129, 0.18);
+}
+
+.topbar-status-chip.active {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fca5a5;
+    animation: maintPulseBadge 2s infinite;
+}
+
+.topbar-status-chip.active:hover {
+    background: #fee2e2;
+}
+
+.topbar-status-chip .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.topbar-status-chip.normal .dot {
+    background: #10b981;
+}
+
+.topbar-status-chip.active .dot {
+    background: #ef4444;
+    animation: maintPulseDot 1.2s infinite;
+}
+
+.maint-card-active {
+    border: 2px solid #ef4444 !important;
+    background: #fffdfd !important;
+    box-shadow: 0 8px 24px -4px rgba(239, 68, 68, 0.15) !important;
+}
+
+.maint-card-normal {
+    border: 1px solid var(--border-color) !important;
+    background: #ffffff !important;
+}
+
+.badge-maint-sidebar-active {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    animation: maintPulseBadge 2s infinite !important;
+}
+
+.badge-maint-sidebar-normal {
+    background: rgba(245, 158, 11, 0.15) !important;
+    color: #d97706 !important;
+    font-weight: 700 !important;
+}
+
+
 

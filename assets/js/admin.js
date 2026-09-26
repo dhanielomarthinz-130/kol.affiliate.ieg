@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupEventListeners();
     updateGoogleSyncBadge();
+    checkGlobalMaintenanceStatus();
     startAutoRefresh();
 
     // Buka view sesuai URL parameter
@@ -1193,65 +1194,141 @@ async function loadMaintenanceInfo() {
         }
     } catch (e) {
         if (specsEl) specsEl.textContent = 'Gagal memuat diagnostik: ' + e.message;
+        checkGlobalMaintenanceStatus();
+    }
+}
+
+// Global Maintenance Status Checker (Runs everywhere in admin)
+async function checkGlobalMaintenanceStatus() {
+    try {
+        const res = await fetch('api/maintenance.php?action=get_status&_t=' + Date.now());
+        const data = await parseResponseJson(res);
+        if (data.success && data.config) {
+            _renderMaintenanceModeUI(data.config);
+        }
+    } catch (err) {
+        console.warn('Could not check global maintenance status:', err);
     }
 }
 
 function _renderMaintenanceModeUI(cfg) {
     if (!cfg) return;
     const isActive = !!cfg.is_maintenance;
-    const badge    = document.getElementById('maintModeBadge');
-    const dot      = document.getElementById('maintModeDot');
-    const label    = document.getElementById('maintModeLabel');
-    const btn      = document.getElementById('btnToggleMaintenance');
-    const btnIcon  = document.getElementById('maintToggleIcon');
-    const btnLabel = document.getElementById('maintToggleLabel');
-    const lastEl   = document.getElementById('maintLastChanged');
+
+    // 1. Sticky Global Alert Banner (Visible across ALL tabs when active)
+    const globalBanner = document.getElementById('globalMaintenanceAlertBanner');
+    if (globalBanner) {
+        globalBanner.style.display = isActive ? 'flex' : 'none';
+    }
+
+    // 2. Topbar Status Chip
+    const topChip = document.getElementById('topbarMaintChip');
+    const topLabel = document.getElementById('topbarMaintLabel');
+    if (topChip) {
+        topChip.className = isActive ? 'topbar-status-chip active' : 'topbar-status-chip normal';
+    }
+    if (topLabel) {
+        topLabel.textContent = isActive ? '⚠️ MAINTENANCE AKTIF' : 'Sistem Normal';
+    }
+
+    // 3. Sidebar Nav Badge Indicator
+    const sidebarBadge = document.getElementById('sidebarMaintBadge');
+    if (sidebarBadge) {
+        if (isActive) {
+            sidebarBadge.className = 'nav-badge badge-maint-sidebar-active';
+            sidebarBadge.textContent = '● AKTIF';
+        } else {
+            sidebarBadge.className = 'nav-badge badge-maint-sidebar-normal';
+            sidebarBadge.textContent = 'SUPER';
+        }
+    }
+
+    // 4. Maintenance View Card Elements
+    const card      = document.getElementById('maintModeCard');
+    const cardIcon  = document.getElementById('maintModeCardIcon');
+    const cardTitle = document.getElementById('maintModeCardTitleText');
+    const badge     = document.getElementById('maintModeBadge');
+    const dot       = document.getElementById('maintModeDot');
+    const label     = document.getElementById('maintModeLabel');
+    const desc      = document.getElementById('maintModeDesc');
+    const btn       = document.getElementById('btnToggleMaintenance');
+    const btnIcon   = document.getElementById('maintToggleIcon');
+    const btnLabel  = document.getElementById('maintToggleLabel');
+    const lastEl    = document.getElementById('maintLastChanged');
+
+    if (card) {
+        card.className = isActive ? 'card maint-card-active' : 'card maint-card-normal';
+    }
+    if (cardIcon) {
+        cardIcon.textContent = isActive ? 'warning' : 'verified';
+        cardIcon.style.color = isActive ? '#dc2626' : '#10b981';
+    }
+    if (cardTitle) {
+        cardTitle.textContent = isActive 
+            ? 'Status: MODE PEMELIHARAAN AKTIF (SISTEM DIKUNCI)' 
+            : 'Status: Sistem Normal (Operasional Penuh)';
+        cardTitle.style.color = isActive ? '#991b1b' : '#0f172a';
+    }
 
     if (badge) {
         if (isActive) {
-            badge.style.background = 'rgba(245,158,11,0.12)';
-            badge.style.color = '#d97706';
-            badge.style.borderColor = 'rgba(245,158,11,0.35)';
+            badge.style.background = '#fef2f2';
+            badge.style.color = '#dc2626';
+            badge.style.borderColor = '#fca5a5';
         } else {
             badge.style.background = 'rgba(16,185,129,0.12)';
             badge.style.color = '#059669';
             badge.style.borderColor = 'rgba(16,185,129,0.3)';
         }
     }
-    if (dot) dot.style.background = isActive ? '#f59e0b' : '#10b981';
-    if (label) label.textContent = isActive ? 'Maintenance Aktif' : 'Sistem Normal (Aktif)';
+    if (dot) {
+        dot.style.background = isActive ? '#dc2626' : '#10b981';
+        dot.style.animation = isActive ? 'maintPulseDot 1.2s infinite' : 'none';
+    }
+    if (label) {
+        label.textContent = isActive ? '🔴 Mode Pemeliharaan Aktif' : '🟢 Sistem Normal (Aktif)';
+    }
+
+    if (desc) {
+        if (isActive) {
+            desc.innerHTML = '<strong style="color:#dc2626;">PERHATIAN:</strong> Mode maintenance sedang <b>AKTIF</b>. Sistem terkunci untuk Operator &amp; Admin biasa. Hanya Superadmin <strong>Daniel</strong> yang dapat login.';
+        } else {
+            desc.innerHTML = 'Sistem beroperasi normal. Seluruh operator dan admin dapat login dan menggunakan fitur packing secara penuh.';
+        }
+    }
 
     if (btn) {
         if (isActive) {
-            btn.style.background = 'linear-gradient(135deg,#dc2626,#ef4444)';
+            btn.style.background = 'linear-gradient(135deg,#15803d,#16a34a)';
             btn.style.color = '#fff';
-            btn.style.border = '1px solid transparent';
-            btn.style.boxShadow = '0 4px 14px -4px rgba(220,38,38,0.5)';
+            btn.style.boxShadow = '0 4px 14px -4px rgba(22,163,74,0.5)';
         } else {
             btn.style.background = 'linear-gradient(135deg,#d97706,#f59e0b)';
             btn.style.color = '#fff';
-            btn.style.border = '1px solid transparent';
             btn.style.boxShadow = '0 4px 14px -4px rgba(245,158,11,0.5)';
         }
     }
-    if (btnIcon) btnIcon.textContent = isActive ? 'power_off' : 'power_settings_new';
-    if (btnLabel) btnLabel.textContent = isActive ? 'Nonaktifkan Maintenance' : 'Aktifkan Maintenance';
+    if (btnIcon) btnIcon.textContent = isActive ? 'check_circle' : 'power_settings_new';
+    if (btnLabel) btnLabel.textContent = isActive ? 'Matikan Maintenance (Kembali Normal)' : 'Aktifkan Mode Maintenance';
+
     if (lastEl && cfg.updated_at) {
-        const ts = cfg.updated_at ? new Date(cfg.updated_at).toLocaleString('id-ID') : '-';
-        lastEl.textContent = isActive ? `Diaktifkan oleh ${cfg.updated_by || 'system'} pada ${ts}` : `Terakhir dinonaktifkan: ${ts}`;
+        const ts = new Date(cfg.updated_at).toLocaleString('id-ID');
+        lastEl.textContent = isActive ? `Diaktifkan oleh ${cfg.updated_by || 'Daniel'} pada ${ts}` : `Terakhir dinonaktifkan: ${ts}`;
     } else if (lastEl) {
-        lastEl.textContent = isActive ? `Diaktifkan oleh ${cfg.updated_by || 'system'}` : 'Status: Normal';
+        lastEl.textContent = isActive ? `Diaktifkan oleh ${cfg.updated_by || 'Daniel'}` : 'Status: Normal';
     }
 }
 
 async function toggleMaintenanceMode() {
     const btn = document.getElementById('btnToggleMaintenance');
     const labelEl = document.getElementById('maintModeLabel');
-    const isCurrentlyActive = labelEl && labelEl.textContent.includes('Maintenance Aktif');
+    const topLabel = document.getElementById('topbarMaintLabel');
+    const isCurrentlyActive = (labelEl && (labelEl.textContent.includes('Pemeliharaan Aktif') || labelEl.textContent.includes('Maintenance Aktif'))) ||
+                              (topLabel && topLabel.textContent.includes('AKTIF'));
 
     const confirmMsg = isCurrentlyActive
-        ? '⚠️ NONAKTIFKAN Mode Maintenance?\n\nSistem akan kembali dapat diakses oleh semua pengguna.'
-        : '🔒 AKTIFKAN Mode Maintenance?\n\nHanya Superadmin (Daniel) yang dapat login. Semua pengguna lain akan diblokir!';
+        ? '⚠️ NONAKTIFKAN MODE PEMELIHARAAN?\n\nSistem akan kembali dibuka secara normal untuk seluruh Operator dan Admin.'
+        : '🔒 AKTIFKAN MODE PEMELIHARAAN?\n\nSistem akan DIKUNCI. Hanya Superadmin (Daniel) yang dapat login. Semua Operator dan pengguna lain akan dialihkan ke layar pemeliharaan.';
 
     if (!confirm(confirmMsg)) return;
 
@@ -1265,8 +1342,10 @@ async function toggleMaintenanceMode() {
         const data = await parseResponseJson(res);
         if (data.success) {
             showAdminToast(data.message, data.is_maintenance ? 'warning' : 'success');
-            // Reload info to sync UI state
-            await loadMaintenanceInfo();
+            await checkGlobalMaintenanceStatus();
+            if (_currentView === 'maintenance') {
+                await loadMaintenanceInfo();
+            }
         } else {
             showAdminToast(data.message || 'Gagal mengubah status maintenance.', 'error');
         }

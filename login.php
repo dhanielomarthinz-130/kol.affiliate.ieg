@@ -436,6 +436,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <span class="login-badge">LOGIN</span>
             </div>
 
+            <?php if ($isMaintenance): ?>
+                <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:12px; padding:10px 14px; margin-bottom:1rem; display:flex; align-items:center; gap:10px; color:#991b1b; font-size:0.8rem; font-weight:600;">
+                    <span class="material-symbols-outlined" style="font-size:20px; color:#dc2626; flex-shrink:0;">warning</span>
+                    <span>Mode Pemeliharaan aktif. Hanya Superadmin (Daniel) yang dapat login.</span>
+                </div>
+            <?php endif; ?>
+
             <?php if (!empty($error)): ?>
                 <div class="error-alert" role="alert">
                     <span class="material-symbols-outlined" style="font-size:18px;color:#dc2626;flex-shrink:0;">error</span>

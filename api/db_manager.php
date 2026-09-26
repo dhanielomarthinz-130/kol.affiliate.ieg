@@ -53,10 +53,15 @@ if ($action === 'list_tables') {
 
     $tables = [];
     foreach ($ALLOWED_TABLES as $t) {
-        $cnt = $db->query("SELECT COUNT(*) FROM `$t`")->fetchColumn();
+        $cnt = 0;
+        try {
+            $cnt = (int)$db->query("SELECT COUNT(*) FROM `$t`")->fetchColumn();
+        } catch (Throwable $e) {
+            $cnt = 0;
+        }
         $tables[] = [
             'name'       => $t,
-            'count'      => (int)$cnt,
+            'count'      => $cnt,
             'label'      => $meta[$t]['label'] ?? $t,
             'desc'       => $meta[$t]['desc'] ?? 'Tabel database sistem',
             'icon'       => $meta[$t]['icon'] ?? 'table_chart',
