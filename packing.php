@@ -15,8 +15,9 @@ $stmtToday = $db->prepare("SELECT COUNT(*) as cnt FROM packings WHERE DATE(creat
 $stmtToday->execute([$todayDate]);
 $initialTodayCount = intval($stmtToday->fetch()['cnt'] ?? 0);
 
-// Pre-fetch recent packings for instant zero-delay rendering
-$stmtRecent = $db->query("SELECT * FROM packings ORDER BY id DESC LIMIT 10");
+// Pre-fetch recent packings for today only
+$stmtRecent = $db->prepare("SELECT * FROM packings WHERE DATE(created_at) = ? ORDER BY id DESC LIMIT 10");
+$stmtRecent->execute([$todayDate]);
 $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
 ?>
 <!DOCTYPE html>
@@ -225,8 +226,8 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
 
                     <!-- Header List -->
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 2px 0;">
-                        <span style="font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em;">Daftar Terakhir Di-Scan</span>
-                        <span style="font-size: 0.7rem; color: #94a3b8;">10 Paket Terkini</span>
+                        <span style="font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em;">Daftar Terakhir Di-Scan Hari Ini</span>
+                        <span style="font-size: 0.7rem; color: #94a3b8;">Hari Ini</span>
                     </div>
 
                     <!-- Scrollable History Feed (Pre-rendered from Server) -->
@@ -236,7 +237,7 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                                 <div style="width: 44px; height: 44px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: #94a3b8;">
                                     <span class="material-symbols-outlined" style="font-size: 24px;">qr_code_scanner</span>
                                 </div>
-                                <div style="font-size: 0.86rem; font-weight: 600; color: #64748b;">Belum ada paket yang direkam</div>
+                                <div style="font-size: 0.86rem; font-weight: 600; color: #64748b;">Belum ada paket yang direkam hari ini</div>
                                 <div style="font-size: 0.76rem; color: #94a3b8; max-width: 220px; line-height: 1.3;">Arahkan scanner ke resi pertama untuk mulai merekam otomatis.</div>
                             </div>
                         <?php else: ?>

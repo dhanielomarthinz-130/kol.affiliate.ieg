@@ -707,7 +707,7 @@ class PackingStation {
     async loadRecentHistory() {
         if (!this.historyList) return;
         try {
-            const res = await fetch('api/get_packings.php?limit=10&_t=' + Date.now(), {
+            const res = await fetch('api/get_packings.php?limit=10&today_only=1&_t=' + Date.now(), {
                 cache: 'no-store'
             });
             const data = await res.json();
@@ -728,8 +728,12 @@ class PackingStation {
     renderHistory(items) {
         if (items.length === 0) {
             this.historyList.innerHTML = `
-                <div style="text-align: center; color: #64748b; padding: 2rem 0;">
-                    Belum ada rekaman paket hari ini.
+                <div style="text-align: center; color: #94a3b8; padding: 2.5rem 1rem; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: #94a3b8;">
+                        <span class="material-symbols-outlined" style="font-size: 24px;">qr_code_scanner</span>
+                    </div>
+                    <div style="font-size: 0.86rem; font-weight: 600; color: #64748b;">Belum ada paket yang direkam hari ini</div>
+                    <div style="font-size: 0.76rem; color: #94a3b8; max-width: 220px; line-height: 1.3;">Arahkan scanner ke resi pertama untuk mulai merekam otomatis.</div>
                 </div>
             `;
             return;

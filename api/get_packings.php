@@ -19,6 +19,7 @@ $search = trim($_GET['search'] ?? '');
 $operatorId = intval($_GET['operator_id'] ?? 0);
 $dateFrom = trim($_GET['date_from'] ?? '');
 $dateTo = trim($_GET['date_to'] ?? '');
+$todayOnly = !empty($_GET['today_only']);
 $page = max(1, intval($_GET['page'] ?? 1));
 $limit = max(1, min(100, intval($_GET['limit'] ?? 20)));
 $offset = ($page - 1) * $limit;
@@ -26,6 +27,11 @@ $offset = ($page - 1) * $limit;
 // If operator, they can see today's packings or their own packings
 $whereClauses = [];
 $params = [];
+
+if ($todayOnly) {
+    $whereClauses[] = "DATE(created_at) = ?";
+    $params[] = date('Y-m-d');
+}
 
 // Filter by operator only if explicitly specified
 if ($operatorId > 0) {
