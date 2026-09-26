@@ -64,10 +64,20 @@ try {
             }
         }
 
-        // Disk space info
+        // Disk space info safely
         $diskDrive = substr(__DIR__, 0, 2);
-        $freeDisk = @disk_free_space($diskDrive) ?: 0;
-        $totalDisk = @disk_total_space($diskDrive) ?: 0;
+        $freeDisk = 0;
+        $totalDisk = 0;
+        if (function_exists('disk_free_space')) {
+            try {
+                $freeDisk = @disk_free_space($diskDrive) ?: 0;
+            } catch (Throwable $e) {}
+        }
+        if (function_exists('disk_total_space')) {
+            try {
+                $totalDisk = @disk_total_space($diskDrive) ?: 0;
+            } catch (Throwable $e) {}
+        }
 
         // Database size
         $dbSize = 0;
@@ -101,15 +111,15 @@ try {
                 'php_version'        => PHP_VERSION,
                 'os'                 => PHP_OS,
                 'server_software'    => $_SERVER['SERVER_SOFTWARE'] ?? 'PHP CLI/Apache',
-                'upload_max_filesize'=> ini_get('upload_max_filesize'),
-                'post_max_size'      => ini_get('post_max_size'),
-                'memory_limit'       => ini_get('memory_limit'),
-                'max_execution_time' => ini_get('max_execution_time') . 's'
+                'upload_max_filesize'=> function_exists('ini_get') ? ini_get('upload_max_filesize') : 'N/A',
+                'post_max_size'      => function_exists('ini_get') ? ini_get('post_max_size') : 'N/A',
+                'memory_limit'       => function_exists('ini_get') ? ini_get('memory_limit') : 'N/A',
+                'max_execution_time' => (function_exists('ini_get') ? ini_get('max_execution_time') : '0') . 's'
             ],
             'storage' => [
-                'disk_free_formatted' => formatBytes($freeDisk),
-                'disk_total_formatted'=> formatBytes($totalDisk),
-                'disk_used_percent'   => ($totalDisk > 0) ? round((($totalDisk - $freeDisk) / $totalDisk) * 100, 1) : 0,
+                'disk_free_formatted' => ($freeDisk > 0) ? formatBytes($freeDisk) : 'Tersedia',
+                'disk_total_formatted'=> ($totalDisk > 0) ? formatBytes($totalDisk) : 'Tersedia',
+                'disk_used_percent'   => ($totalDisk > 0 && $freeDisk > 0) ? round((($totalDisk - $freeDisk) / $totalDisk) * 100, 1) : 0,
                 'video_count'         => $videoCount,
                 'video_size_formatted'=> formatBytes($totalVideoSize),
                 'zero_byte_count'     => $zeroByteFiles,
