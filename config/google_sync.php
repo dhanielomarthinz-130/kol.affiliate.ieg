@@ -217,9 +217,24 @@ function sendPackingToGoogle(int $packingId): array {
     $driveUrl = $res['drive_url'] ?? '';
     $nowWib = date('Y-m-d H:i:s');
 
-    // Update database
-    $upStmt = $db->prepare("UPDATE packings SET gdrive_url = ?, synced_at = ? WHERE id = ?");
-    $upStmt->execute([$driveUrl, $nowWib, $packingId]);
+    // Update database dengan auto-reconnect retry (mencegah 'MySQL server has gone away' setelah upload panjang)
+    for ($dbRetry = 1; $dbRetry <= 2; $dbRetry++) {
+        try {
+            $dbFresh = getDB($dbRetry > 1);
+            $upStmt = $dbFresh->prepare("UPDATE packings SET gdrive_url = ?, synced_at = ? WHERE id = ?");
+            $upStmt->execute([$driveUrl, $nowWib, $packingId]);
+            break;
+        } catch (\Throwable $e) {
+            if ($dbRetry === 2) {
+                error_log("Failed to update gdrive_url for ID {$packingId}: " . $e->getMessage());
+                return [
+                    'success'   => false,
+                    'message'   => 'Video terupload ke Google tapi gagal menyimpan data ke database: ' . $e->getMessage(),
+                    'drive_url' => $driveUrl
+                ];
+            }
+        }
+    }
 
     return [
         'success'   => true,

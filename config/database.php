@@ -10,10 +10,17 @@ define('DB_MYSQL_NAME', 'if0_38464190_iegkolaffiliate');
 define('DB_MYSQL_USER', 'if0_38464190');
 define('DB_MYSQL_PASS', 'Dhaniel0');
 
-function getDB() {
+function getDB(bool $forceReconnect = false) {
     static $db = null;
-    if ($db !== null) {
-        return $db;
+    if ($db !== null && !$forceReconnect) {
+        try {
+            // Ping koneksi untuk memastikan socket masih hidup (mencegah MySQL has gone away)
+            $db->query("SELECT 1");
+            return $db;
+        } catch (\Throwable $e) {
+            // Koneksi terputus/timeout, lakukan reconnect ulang
+            $db = null;
+        }
     }
 
     $httpHost = strtolower($_SERVER['HTTP_HOST'] ?? '');
@@ -46,9 +53,12 @@ function getDB() {
                 $db = new PDO($dsn, DB_MYSQL_USER, DB_MYSQL_PASS, [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_TIMEOUT => 4
+                    PDO::ATTR_TIMEOUT => 10,
+                    PDO::ATTR_PERSISTENT => false
                 ]);
                 $db->exec("SET time_zone = '+07:00'");
+                @$db->exec("SET SESSION wait_timeout = 600");
+                @$db->exec("SET SESSION interactive_timeout = 600");
                 initMySQL($db);
                 migrateTables($db);
                 return $db;

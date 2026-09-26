@@ -221,10 +221,17 @@ try {
             ];
         }
 
-        // Hitung sisa sesuai filter aktif
-        $stmtRem = $db->prepare("SELECT COUNT(*) as rem FROM packings {$whereSql}");
-        $stmtRem->execute($params);
-        $remCount = intval($stmtRem->fetch()['rem'] ?? 0);
+        // Hitung sisa sesuai filter aktif (gunakan koneksi DB segar setelah upload berdurasi lama)
+        $remCount = 0;
+        try {
+            $dbFresh = getDB();
+            $stmtRem = $dbFresh->prepare("SELECT COUNT(*) as rem FROM packings {$whereSql}");
+            $stmtRem->execute($params);
+            $remCount = intval($stmtRem->fetch()['rem'] ?? 0);
+        } catch (\Throwable $e) {
+            // Jangan gagalkan respons sync jika hanya query penghitungan sisa yang bermasalah
+            $remCount = 0;
+        }
 
         respondJson([
             'success'         => true,
