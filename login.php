@@ -46,8 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login — IEG Packaging KOL Affiliate</title>
-    <meta name="description" content="Portal login resmi sistem perekaman dan audit packaging IEG KOL Affiliate.">
+    <title>Login — IEG KOL</title>
+    <meta name="description" content="Sistem perekaman dan packing IEG KOL Affiliate.">
     <link rel="icon" type="image/svg+xml" href="assets/image/favicon.svg">
     <link rel="icon" type="image/png" href="assets/image/favicon.png">
     <link rel="shortcut icon" href="favicon.ico">
@@ -572,10 +572,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <h1 class="login-brand-title">IEG Packaging</h1>
                 <div class="login-brand-sub">KOL Affiliate System</div>
-                <div class="login-badge-chip">
-                    <span class="chip-dot"></span>
-                    <span>Portal Masuk Sistem</span>
-                </div>
             </div>
 
             <!-- Maintenance Alert Banner -->

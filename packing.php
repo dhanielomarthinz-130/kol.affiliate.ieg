@@ -25,7 +25,7 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stasiun Kerja Packing - KOL Affiliate</title>
+    <title>Packing — IEG KOL</title>
     <link rel="icon" type="image/svg+xml" href="assets/image/favicon.svg">
     <link rel="icon" type="image/png" href="assets/image/favicon.png">
     <link rel="shortcut icon" href="favicon.ico">
@@ -92,9 +92,9 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
             <!-- Right: Operator Profile & Actions -->
             <div class="operator-header-right">
                 <?php if (in_array($user['role'] ?? '', ['admin', 'superadmin'])): ?>
-                <a href="admin" class="header-admin-btn" title="Buka Portal Admin">
+                <a href="admin" class="header-admin-btn" title="Buka Admin">
                     <span class="material-symbols-outlined" style="font-size: 16px;">dashboard</span>
-                    <span>Portal Admin</span>
+                    <span>Admin</span>
                 </a>
                 <?php endif; ?>
 
