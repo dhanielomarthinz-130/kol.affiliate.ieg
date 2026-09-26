@@ -148,31 +148,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         /* Brand */
         .login-brand {
             text-align: center;
-            margin-bottom: 1.35rem;
+            margin-bottom: 1.45rem;
         }
 
         .login-title {
-            font-size: 1.55rem;
+            font-size: 1.62rem;
             font-weight: 800;
             color: var(--text-primary);
-            letter-spacing: -0.03em;
+            letter-spacing: -0.035em;
             line-height: 1.2;
             white-space: nowrap;
         }
-        .login-subtitle {
-            font-size: 0.82rem;
-            font-weight: 700;
+
+        .login-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3px 12px;
+            margin-top: 7px;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            border-radius: 9999px;
             color: #2563eb;
-            margin-top: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
             letter-spacing: 0.12em;
             text-transform: uppercase;
-        }
-
-        /* Divider */
-        .divider {
-            height: 1px;
-            background: #f1f5f9;
-            margin: 1.2rem 0 1.3rem;
         }
 
         /* Error alert */
@@ -322,20 +323,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             user-select: none;
             transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
+        .tab-btn:focus {
+            outline: none;
+        }
+        .tab-btn:focus-visible {
+            outline: 2px solid rgba(37, 99, 235, 0.4);
+            outline-offset: 1px;
+        }
         .tab-btn span {
             white-space: nowrap;
             line-height: 1;
         }
         .tab-btn:hover {
             color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.7);
         }
         .tab-btn.active {
             background: #ffffff;
             color: #2563eb;
             font-weight: 700;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+            border: 1px solid #dbeafe;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12), 0 1px 3px rgba(15, 23, 42, 0.05);
         }
         .tab-btn .tab-icon {
             font-size: 18px;
@@ -350,7 +358,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             body { padding: 1rem 0.75rem; }
             .login-card { padding: 1.75rem 1.25rem 1.5rem; }
             .tab-btn { font-size: 0.79rem; gap: 6px; padding: 0 8px; }
-            .login-subtitle { font-size: 0.76rem; }
+            .login-badge { font-size: 0.68rem; }
         }
 
         /* PIN Mode Elements */
@@ -381,8 +389,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-top: 0.85rem;
         }
         .login-pin-key {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
             color: var(--text-primary);
             font-size: 1.25rem;
             font-weight: 700;
@@ -395,12 +403,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: center;
             transition: all 0.15s ease;
             user-select: none;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+        }
+        .login-pin-key:focus {
+            outline: none;
         }
         .login-pin-key:hover {
             background: #eff6ff;
             border-color: #93c5fd;
             color: #1d4ed8;
             transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
         }
         .login-pin-key:active {
             transform: translateY(1px);
@@ -420,10 +433,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Brand -->
             <div class="login-brand">
                 <h1 class="login-title">KOL Packing</h1>
-                <p class="login-subtitle">LOGIN</p>
+                <span class="login-badge">LOGIN</span>
             </div>
-
-            <div class="divider"></div>
 
             <?php if (!empty($error)): ?>
                 <div class="error-alert" role="alert">
