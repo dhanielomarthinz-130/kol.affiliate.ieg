@@ -74,8 +74,8 @@ try {
                 <a href="admin" class="sidebar-brand">
                     <img src="assets/image/logo-IEG.png" alt="IEG Logo" class="sidebar-brand-logo" style="height: 38px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.3));">
                     <div>
-                        <div class="sidebar-brand-title">IEG PACKING</div>
-                        <div class="sidebar-brand-sub"><?= $isSuperAdmin ? 'Superadmin Portal' : 'Admin Portal' ?></div>
+                        <div class="sidebar-brand-title">IEG Packaging</div>
+                        <div class="sidebar-brand-sub">KOL Affiliate</div>
                     </div>
                 </a>
             </div>

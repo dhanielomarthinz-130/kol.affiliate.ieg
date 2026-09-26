@@ -935,11 +935,10 @@ html, body {
 }
 
 .sidebar-brand-sub {
-    font-size: 0.68rem;
+    font-size: 0.72rem;
     color: #94a3b8;
     font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
 .sidebar-content {
