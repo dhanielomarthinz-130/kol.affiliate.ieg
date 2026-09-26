@@ -160,13 +160,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             white-space: nowrap;
         }
         .login-subtitle {
-            font-size: 0.81rem;
-            color: var(--text-muted);
-            margin-top: 5px;
-            line-height: 1.45;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #2563eb;
+            margin-top: 6px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
         }
 
         /* Divider */
@@ -421,7 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Brand -->
             <div class="login-brand">
                 <h1 class="login-title">KOL Packing</h1>
-                <p class="login-subtitle">Perekaman &amp; Audit Otomatis Video Packaging</p>
+                <p class="login-subtitle">LOGIN</p>
             </div>
 
             <div class="divider"></div>
