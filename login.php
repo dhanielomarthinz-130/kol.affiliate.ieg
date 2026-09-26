@@ -724,7 +724,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">lock</span>
                 <span>Enkripsi 256-Bit SSL • Aman &amp; Terlindungi</span>
             </div>
-            <div class="login-footer-copy">© 2026 IEG Packaging System • KOL Affiliate</div>
+            <div class="login-footer-copy">© 2026 Dhanielo-Marthinz | IMS</div>
         </div>
     </div>
 
