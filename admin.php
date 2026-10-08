@@ -161,7 +161,7 @@ try {
 
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <!-- Maintenance Status Indicator Pill -->
-                    <div id="topbarMaintChip" class="topbar-status-chip normal" onclick="switchAdminView('maintenance')" title="Klik untuk membuka status & diagnosa sistem">
+                    <div id="topbarMaintChip" class="topbar-status-chip normal"<?php if ($isSuperAdmin): ?> onclick="switchAdminView('maintenance')" title="Klik untuk membuka status & diagnosa sistem"<?php else: ?> title="Status sistem"<?php endif; ?>>
                         <span class="dot" id="topbarMaintDot"></span>
                         <span id="topbarMaintLabel">Sistem Normal</span>
                     </div>
@@ -183,10 +183,10 @@ try {
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center;">
+                    <?php if ($isSuperAdmin): ?>
                     <button type="button" onclick="switchAdminView('maintenance')" class="btn btn-sm btn-outline" style="border-color: #fca5a5; color: #991b1b; background: #fff; font-weight: 600;">
                         Kelola
                     </button>
-                    <?php if ($isSuperAdmin): ?>
                     <button type="button" onclick="toggleMaintenanceMode()" class="btn btn-sm" style="background: #16a34a; color: #fff; border: none; font-weight: 700; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(22,163,74,0.35);">
                         <span class="material-symbols-outlined" style="font-size: 16px;">power_settings_new</span>
                         <span>Matikan Maintenance Sekarang</span>
@@ -591,11 +591,10 @@ try {
                                 Memuat...
                             </div>
                         </div>
-                    </div>
-                </
-        </main>
-    </div>
-          <?php endif; ?>
+                    </div><!-- /card-body -->
+                </div><!-- /card Tindakan Pemeliharaan -->
+            </div><!-- /#viewMaintenance -->
+            <?php endif; ?>
 
         </main>
     </div>

@@ -2390,3 +2390,39 @@ html, body {
 
 
 
+
+/* ==========================================
+   STATUS UPLOAD CARD RIWAYAT (Operator)
+   ========================================== */
+.upload-state-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-left: 4px;
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.3;
+}
+.history-item.upload-pending .upload-state-badge {
+    background: #fef3c7;
+    color: #b45309;
+}
+.history-item.upload-done .upload-state-badge {
+    background: #d1fae5;
+    color: #047857;
+}
+.history-item.upload-failed {
+    border-color: #fca5a5 !important;
+    background: #fff1f2 !important;
+}
+.history-item.upload-failed .upload-state-badge {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+.upload-retry-btn {
+    white-space: nowrap;
+}

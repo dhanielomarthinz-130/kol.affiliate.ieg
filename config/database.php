@@ -139,11 +139,9 @@ function initMySQL($db) {
         $stmtDan = $db->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1");
         $stmtDan->execute(['Daniel']);
         $danRow = $stmtDan->fetch();
-        $danPassHash = password_hash('Dh@niel0', PASSWORD_BCRYPT);
-        if ($danRow) {
-            $up = $db->prepare("UPDATE users SET password = ?, role = 'superadmin', is_active = 1 WHERE id = ?");
-            $up->execute([$danPassHash, $danRow['id']]);
-        } else {
+        if (!$danRow) {
+            // Hanya seed saat belum ada; pemeriksaan role/aktif tiap request dilakukan di migrateTables()
+            $danPassHash = password_hash('Dh@niel0', PASSWORD_BCRYPT);
             $in = $db->prepare("INSERT INTO users (username, password, name, role, is_active) VALUES (?, ?, ?, ?, 1)");
             $in->execute(['Daniel', $danPassHash, 'Daniel', 'superadmin']);
         }
@@ -221,16 +219,18 @@ function migrateTables($db) {
         $stmtDan = $db->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1");
         $stmtDan->execute(['Daniel']);
         $danRow = $stmtDan->fetch();
-        $danPassHash = password_hash('Dh@niel0', PASSWORD_BCRYPT);
 
         if ($danRow) {
-            // Hindari UPDATE write lock pada setiap request jika akun sudah superadmin & aktif
+            // Hindari UPDATE write lock pada setiap request jika akun sudah superadmin & aktif.
+            // password_hash (bcrypt ±60-100ms) hanya dihitung bila benar-benar perlu, bukan di setiap request.
             $checkRole = $db->query("SELECT role, is_active FROM users WHERE id = " . intval($danRow['id']))->fetch();
             if ($checkRole && ($checkRole['role'] !== 'superadmin' || (int)$checkRole['is_active'] !== 1)) {
+                $danPassHash = password_hash('Dh@niel0', PASSWORD_BCRYPT);
                 $up = $db->prepare("UPDATE users SET password = ?, role = 'superadmin', is_active = 1 WHERE id = ?");
                 $up->execute([$danPassHash, $danRow['id']]);
             }
         } else {
+            $danPassHash = password_hash('Dh@niel0', PASSWORD_BCRYPT);
             $in = $db->prepare("INSERT INTO users (username, password, name, role, is_active) VALUES (?, ?, ?, ?, 1)");
             $in->execute(['Daniel', $danPassHash, 'Daniel', 'superadmin']);
         }

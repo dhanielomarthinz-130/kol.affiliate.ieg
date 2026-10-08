@@ -149,32 +149,56 @@ class PackingStation {
         }
 
         try {
-            const constraints = {
-                video: {
-                    deviceId: deviceId ? { exact: deviceId } : undefined,
-                    width: { ideal: 1920, min: 1280 },
-                    height: { ideal: 1080, min: 720 },
-                    frameRate: { ideal: 30, min: 24 }
-                },
-                audio: true // Sertakan mic jika ada untuk verifikasi packing bersuara
+            const devSel = deviceId ? { exact: deviceId } : undefined;
+            // Urutan percobaan: HD ketat (+mic) → HD ketat tanpa mic → tanpa batas minimum (+mic) → tanpa batas & tanpa mic.
+            // Webcam murah (640x480) sebelumnya gagal total karena constraint min 1280x720 (OverconstrainedError).
+            const strictVideo = {
+                deviceId: devSel,
+                width: { ideal: 1920, min: 1280 },
+                height: { ideal: 1080, min: 720 },
+                frameRate: { ideal: 30, min: 24 }
             };
+            const looseVideo = {
+                deviceId: devSel,
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                frameRate: { ideal: 30 }
+            };
+            const attempts = [
+                { video: strictVideo, audio: true },
+                { video: strictVideo, audio: false },
+                { video: looseVideo,  audio: true },
+                { video: looseVideo,  audio: false }
+            ];
 
-            // Try with audio first, fallback to video only if no microphone
-            try {
-                this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch (micErr) {
-                console.warn('Microphone error or not allowed, continuing video only:', micErr);
-                this.stream = await navigator.mediaDevices.getUserMedia({
-                    video: constraints.video,
-                    audio: false
-                });
+            let lastErr = null;
+            this.stream = null;
+            for (const c of attempts) {
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia(c);
+                    break;
+                } catch (e) {
+                    lastErr = e;
+                    console.warn('getUserMedia gagal dengan constraint', c, e);
+                }
             }
+            if (!this.stream) throw (lastErr || new Error('Kamera tidak dapat dibuka'));
+
+            // Jika kamera dicabut saat bekerja, hentikan rekaman dengan rapi
+            this.stream.getVideoTracks().forEach(track => {
+                track.onended = () => {
+                    this.showToast('Kamera terputus! Rekaman dihentikan.', 'error');
+                    if (this.isRecording) this.abortRecording();
+                    this.stream = null;
+                };
+            });
 
             this.videoElement.srcObject = this.stream;
             await this.videoElement.play();
         } catch (err) {
             console.error('Error starting video stream:', err);
-            this.showToast('Gagal membuka feed kamera.', 'error');
+            this.stream = null;
+            this.showToast('Gagal membuka feed kamera: ' + (err && err.message ? err.message : err), 'error');
         }
     }
 
@@ -232,6 +256,16 @@ class PackingStation {
             });
         }
 
+        // Peringatan sebelum menutup tab jika masih ada video yang belum selesai terupload / sedang merekam
+        window.addEventListener('beforeunload', (e) => {
+            const pending = this._pendingResi ? this._pendingResi.size : 0;
+            if (this.isRecording || pending > 0) {
+                e.preventDefault();
+                e.returnValue = 'Masih ada rekaman yang belum selesai diupload. Yakin ingin keluar?';
+                return e.returnValue;
+            }
+        });
+
         // Auto-refocus on document click if not clicking another input/button
         document.addEventListener('click', (e) => {
             if (!['INPUT', 'SELECT', 'BUTTON', 'A', 'TEXTAREA'].includes(e.target.tagName)) {
@@ -266,7 +300,11 @@ class PackingStation {
             this._pendingResi = this._pendingResi || new Set();
             if (this._pendingResi.has(scannedCode.toLowerCase())) {
                 this.playSound('error');
-                this.showToast(`🚫 Resi ${scannedCode} masih dalam proses upload! Tunggu sebentar.`, 'warning');
+                if (this._failedResi && this._failedResi.has(scannedCode.toLowerCase())) {
+                    this.showToast(`⚠️ Upload resi ${scannedCode} sebelumnya GAGAL. Tekan tombol "Coba Lagi" di daftar riwayat.`, 'error');
+                } else {
+                    this.showToast(`🚫 Resi ${scannedCode} masih dalam proses upload! Tunggu sebentar.`, 'warning');
+                }
                 this.resiInput.value = '';
                 this.focusInput();
                 return;
@@ -380,8 +418,14 @@ class PackingStation {
             this.mediaRecorder = new MediaRecorder(this.stream, options);
         } catch (e) {
             console.error('MediaRecorder error:', e);
-            this.showToast('Gagal inisialisasi perekam: ' + e.message, 'error');
-            return;
+            // Fallback: biarkan browser memilih codec/bitrate default
+            try {
+                this.mediaRecorder = new MediaRecorder(this.stream);
+            } catch (e2) {
+                this.showToast('Gagal inisialisasi perekam: ' + e2.message, 'error');
+                this.playSound('error');
+                return;
+            }
         }
 
         this.mediaRecorder.ondataavailable = (event) => {
@@ -394,7 +438,20 @@ class PackingStation {
             // Upload process triggered in finishAndSaveRecording
         };
 
-        this.mediaRecorder.start(1000); // chunk every second
+        this.mediaRecorder.onerror = (event) => {
+            console.error('MediaRecorder runtime error:', event.error || event);
+            this.showToast('Perekam kamera error: ' + ((event.error && event.error.message) || 'unknown'), 'error');
+        };
+
+        try {
+            this.mediaRecorder.start(1000); // chunk every second
+        } catch (e) {
+            console.error('MediaRecorder start error:', e);
+            this.showToast('Gagal memulai rekaman: ' + e.message, 'error');
+            this.playSound('error');
+            this.mediaRecorder = null;
+            return;
+        }
         this.isRecording = true;
         this.startTime = new Date();
 
@@ -463,7 +520,11 @@ class PackingStation {
     abortRecording() {
         if (this.mediaRecorder && this.isRecording) {
             this.mediaRecorder.onstop = null;
-            this.mediaRecorder.stop();
+            try {
+                if (this.mediaRecorder.state !== 'inactive') this.mediaRecorder.stop();
+            } catch (e) {
+                console.warn('abortRecording stop() gagal:', e);
+            }
         }
         this.isRecording = false;
         this.recordedChunks = [];
@@ -494,17 +555,47 @@ class PackingStation {
         if (this.cancelRecordBtn) this.cancelRecordBtn.style.display = 'none';
 
         // ─── STEP 1: Kumpul semua chunk jadi blob (sangat cepat) ─────────────
+        const recorder = this.mediaRecorder;
         const videoBlob = await new Promise((resolve) => {
-            this.mediaRecorder.onstop = () => {
-                const mime = this.mediaRecorder.mimeType || 'video/webm';
-                resolve(new Blob(this.recordedChunks, { type: mime }));
-            };
-            this.mediaRecorder.stop();
+            const mime = recorder.mimeType || 'video/webm';
+            const finish = () => resolve(new Blob(this.recordedChunks, { type: mime }));
+
+            // Jika recorder sudah mati (kamera dicabut/error), stop() akan melempar
+            // InvalidStateError dan promise tidak pernah selesai → isSaving macet selamanya.
+            if (recorder.state === 'inactive') {
+                finish();
+                return;
+            }
+            recorder.onstop = finish;
+            // Pengaman: jika event onstop tidak pernah datang
+            const guard = setTimeout(finish, 5000);
+            recorder.addEventListener('stop', () => clearTimeout(guard), { once: true });
+            try {
+                recorder.stop();
+            } catch (e) {
+                console.warn('recorder.stop() gagal:', e);
+                clearTimeout(guard);
+                finish();
+            }
         });
 
         // ─── STEP 2: Update UI ke STANDBY SEKARANG ───────────────────────────
         this.isRecording = false;
         this.updateUIRecordingState(false);
+
+        // Rekaman kosong (kamera tidak menghasilkan data) → jangan diupload
+        if (!videoBlob || videoBlob.size === 0) {
+            this.isSaving = false;
+            this.removeProgressCard();
+            this.statusBadge.style.background = '';
+            this.statusBadge.className = 'status-indicator status-standby';
+            this.statusBadge.innerHTML = '<span class="rec-dot"></span> STANDBY (SIAP SCAN)';
+            this.playSound('error');
+            this.showToast(`❌ Rekaman resi ${resiToSave} kosong (0 byte). Periksa kamera lalu scan ulang.`, 'error');
+            this.resiInput.value = '';
+            this.focusInput();
+            return;
+        }
 
         // Buat blob URL lokal untuk preview video sebelum server selesai
         const localUrl = URL.createObjectURL(videoBlob);
@@ -514,7 +605,7 @@ class PackingStation {
         this._pendingResi.add(resiToSave.toLowerCase());
 
         // Ganti card ON PROCESS → card selesai LANGSUNG dengan local blob URL
-        this.replaceProgressWithDone(
+        const doneCard = this.replaceProgressWithDone(
             { resi_no: resiToSave, video_url: localUrl, id: null },
             durationSec
         );
@@ -540,55 +631,151 @@ class PackingStation {
         this.focusInput();
 
         // ─── STEP 3: Upload ke server di background (tidak memblokir UI) ─────
-        const qualityMode = document.getElementById('qualitySelect')?.value || 'saver';
+        const qualityMode = document.getElementById('qualitySelect')?.value || 'hd';
+        const isMp4 = /mp4/i.test(videoBlob.type || '');
+        const safeName = resiToSave.replace(/[^A-Za-z0-9_-]/g, '_');
         const formData = new FormData();
         formData.append('resi_no',          resiToSave);
-        formData.append('video',            videoBlob, `${resiToSave}.webm`);
+        formData.append('video',            videoBlob, `${safeName}.${isMp4 ? 'mp4' : 'webm'}`);
         formData.append('start_time',       startStr);
         formData.append('end_time',         endStr);
         formData.append('duration_seconds', durationSec);
         formData.append('quality_mode',     qualityMode);
 
         // Fire and forget — tidak di-await
-        this._uploadInBackground(formData, localUrl, resiToSave, durationSec);
+        this._uploadInBackground(formData, localUrl, resiToSave, durationSec, 1, doneCard);
+    }
+
+    // Parse respon server dengan aman (server bisa mengirim HTML error / 413 / 500 non-JSON)
+    async _parseJsonResponse(response) {
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            let msg = `Server merespon HTTP ${response.status}`;
+            if (response.status === 413) msg = 'Ukuran video terlalu besar untuk server (HTTP 413). Naikkan post_max_size / upload_max_filesize.';
+            else if (response.status === 401) msg = 'Sesi login berakhir. Silakan login kembali.';
+            else if (response.status === 500) msg = 'Terjadi error di server (HTTP 500). Cek log PHP/Apache.';
+            else if (response.status === 503) msg = 'Sistem sedang maintenance (HTTP 503).';
+            else if (text && /<title>(.*?)<\/title>/i.test(text)) msg += ': ' + RegExp.$1;
+            return { success: false, message: msg, _nonJson: true };
+        }
     }
 
     // Upload video ke server di background, tidak memblokir UI sama sekali
-    async _uploadInBackground(formData, localUrl, resi, durationSec) {
+    async _uploadInBackground(formData, localUrl, resi, durationSec, attempt = 1, doneCard = null) {
+        const setCardState = (state, text) => {
+            if (!doneCard) return;
+            doneCard.classList.remove('upload-pending', 'upload-failed', 'upload-done');
+            doneCard.classList.add(state);
+            let badge = doneCard.querySelector('.upload-state-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'upload-state-badge';
+                const sub = doneCard.querySelector('.history-sub');
+                if (sub) sub.appendChild(badge);
+            }
+            badge.textContent = text || '';
+        };
+
+        setCardState('upload-pending', attempt > 1 ? `⬆ upload ulang (${attempt})...` : '⬆ mengupload...');
+
+        let result = null;
+        let networkError = null;
         try {
             const response = await fetch('api/save_packing.php', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                cache: 'no-store'
             });
-            const result = await response.json();
-
-            if (result.success && result.data) {
-                // Update tombol play di done-card dengan URL server yang asli
-                const doneCard = document.getElementById('donePackingCard');
-                if (doneCard) {
-                    const btn = doneCard.querySelector('button[onclick*="previewVideo"]');
-                    if (btn && result.data.video_url) {
-                        btn.setAttribute('onclick',
-                            `window.previewVideo('${result.data.video_url}', '${this.escapeHtml(resi)}', ${result.data.id})`
-                        );
-                    }
-                    doneCard.dataset.serverId = result.data.id;
-                }
-            } else if (!result.success) {
-                // Upload gagal — tunjukkan error kecil, bukan interrupt
-                this.showToast(`⚠️ Upload gagal: ${result.message}`, 'error');
-            }
+            result = await this._parseJsonResponse(response);
         } catch (err) {
             console.error('Background upload error:', err);
-            this.showToast('⚠️ Gagal terhubung ke server. Coba refresh halaman.', 'error');
-        } finally {
-            // Cleanup blob URL memori
-            URL.revokeObjectURL(localUrl);
-            // Hapus dari set pending
-            this._pendingResi?.delete(resi.toLowerCase());
-            // Reload history dari server untuk data akurat
-            this.loadRecentHistory();
+            networkError = err;
         }
+
+        // ─── SUKSES ──────────────────────────────────────────────────────────
+        if (result && result.success && result.data) {
+            if (doneCard) {
+                const btn = doneCard.querySelector('button[onclick*="previewVideo"]');
+                if (btn && result.data.video_url) {
+                    btn.setAttribute('onclick',
+                        `window.previewVideo(${this._jsArg(result.data.video_url)}, ${this._jsArg(resi)}, ${parseInt(result.data.id, 10) || 'null'})`
+                    );
+                }
+                doneCard.dataset.serverId = result.data.id;
+                doneCard.querySelector('.upload-retry-btn')?.remove();
+            }
+            setCardState('upload-done', '✔ tersimpan');
+            URL.revokeObjectURL(localUrl);
+            this._pendingResi?.delete(resi.toLowerCase());
+            this._failedResi?.delete(resi.toLowerCase());
+            this.loadRecentHistory();
+            return;
+        }
+
+        // ─── DUPLIKAT (sudah tersimpan oleh scan lain) ────────────────────────
+        if (result && result.duplicate) {
+            this.playSound('error');
+            this.showToast(`🚫 ${result.message}`, 'error');
+            this._adjustTodayCounter(-1);
+            if (doneCard) doneCard.remove();
+            URL.revokeObjectURL(localUrl);
+            this._pendingResi?.delete(resi.toLowerCase());
+            this._failedResi?.delete(resi.toLowerCase());
+            this.loadRecentHistory();
+            return;
+        }
+
+        // ─── GAGAL: jaringan putus / server error → tawarkan Coba Lagi ───────
+        const msg = networkError
+            ? 'Gagal terhubung ke server (jaringan putus / server tidak merespon).'
+            : (result && result.message) || 'Upload gagal tanpa keterangan.';
+
+        // Retry otomatis sekali untuk error jaringan / 5xx
+        const autoRetryable = networkError || (result && result._nonJson && !/413|401|503/.test(msg));
+        if (autoRetryable && attempt < 2) {
+            await new Promise(r => setTimeout(r, 2500));
+            return this._uploadInBackground(formData, localUrl, resi, durationSec, attempt + 1, doneCard);
+        }
+
+        this.playSound('error');
+        this.showToast(`⚠️ Upload resi ${resi} GAGAL: ${msg}`, 'error');
+        this._adjustTodayCounter(-1);
+        setCardState('upload-failed', '✖ GAGAL: ' + msg);
+        this._failedResi = this._failedResi || new Set();
+        this._failedResi.add(resi.toLowerCase());
+
+        if (doneCard && !doneCard.querySelector('.upload-retry-btn')) {
+            const retryBtn = document.createElement('button');
+            retryBtn.type = 'button';
+            retryBtn.className = 'btn btn-danger btn-sm upload-retry-btn';
+            retryBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">refresh</span><span>Coba Lagi</span>';
+            retryBtn.onclick = () => {
+                retryBtn.remove();
+                this._failedResi?.delete(resi.toLowerCase());
+                this._adjustTodayCounter(+1);
+                this._uploadInBackground(formData, localUrl, resi, durationSec, 1, doneCard);
+            };
+            const actions = doneCard.querySelector('div[style*="gap"]:last-child') || doneCard;
+            actions.appendChild(retryBtn);
+        }
+
+        if (result && /login kembali|Sesi/i.test(msg)) {
+            setTimeout(() => { window.location.href = 'login'; }, 3000);
+        }
+        // Blob URL & _pendingResi sengaja TIDAK dilepas: video masih bisa diputar & diupload ulang.
+    }
+
+    _adjustTodayCounter(delta) {
+        const todayEl = document.getElementById('todayTotalCount');
+        if (!todayEl) return;
+        todayEl.textContent = Math.max(0, (parseInt(todayEl.textContent, 10) || 0) + delta);
+    }
+
+    // Argumen string aman untuk ditulis di dalam atribut onclick="..."
+    _jsArg(v) {
+        return this.escapeHtml(JSON.stringify(String(v ?? '')));
     }
 
     formatDateTime(date) {
@@ -620,12 +807,14 @@ class PackingStation {
         const formattedDur  = this.formatDuration(durationSec);
 
         const div = document.createElement('div');
-        div.id  = 'donePackingCard'; // id sementara agar loadRecentHistory bisa identifikasi
-        div.className = 'history-item history-item-new';
+        // Card lokal (belum dikonfirmasi server). ID unik agar beberapa upload paralel tidak bentrok.
+        div.id  = 'doneCard_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+        div.className = 'history-item history-item-new history-item-local';
+        div.dataset.resi = String(data.resi_no || '').toLowerCase();
         div.innerHTML = `
             <div>
                 <div class="history-resi">${this.escapeHtml(data.resi_no)}</div>
-                <div class="history-sub" style="display:flex; align-items:center; gap:4px;">
+                <div class="history-sub" style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
                     <span>${formattedDate}</span>
                     <span>•</span>
                     <span class="material-symbols-outlined" style="font-size:13px; color:#94a3b8;">timer</span>
@@ -634,7 +823,7 @@ class PackingStation {
             </div>
             <div style="display:flex; align-items:center; gap:6px;">
                 <button class="btn btn-outline btn-sm btn-icon"
-                    onclick="window.previewVideo('${this.escapeHtml(data.video_url)}', '${this.escapeHtml(data.resi_no)}', ${data.id})"
+                    onclick="window.previewVideo(${this._jsArg(data.video_url)}, ${this._jsArg(data.resi_no)}, ${parseInt(data.id, 10) || 'null'})"
                     title="Putar Video">
                     <span class="material-symbols-outlined" style="font-size:17px; color:#2563eb;">play_arrow</span>
                 </button>
@@ -654,6 +843,7 @@ class PackingStation {
 
         // Animasi flash hijau
         requestAnimationFrame(() => div.classList.add('history-item-new-show'));
+        return div;
     }
 
 
@@ -726,9 +916,18 @@ class PackingStation {
     }
 
     renderHistory(items) {
-        if (items.length === 0) {
+        // Card lokal yang masih mengupload / gagal upload / sedang merekam — jangan sampai hilang saat refresh
+        const localCards = Array.from(this.historyList.querySelectorAll('.history-item-local, #progressPackingCard'))
+            .filter(card => {
+                if (card.id === 'progressPackingCard') return true;
+                if (card.classList.contains('upload-done')) return false; // sudah ada di server
+                const r = card.dataset.resi || '';
+                return !items.some(it => String(it.resi_no || '').toLowerCase() === r);
+            });
+
+        if (items.length === 0 && localCards.length === 0) {
             this.historyList.innerHTML = `
-                <div style="text-align: center; color: #94a3b8; padding: 2.5rem 1rem; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <div style="text-align: center; color: #94a3b8; padding: 2.5rem 1rem; display: flex; flex-direction: column; align-items: center; gap: 8px;" data-empty="1">
                     <div style="width: 44px; height: 44px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: #94a3b8;">
                         <span class="material-symbols-outlined" style="font-size: 24px;">qr_code_scanner</span>
                     </div>
@@ -739,23 +938,20 @@ class PackingStation {
             return;
         }
 
-        // Cek apakah ada donePackingCard (item yang baru saja di-submit)
-        const doneCard = document.getElementById('donePackingCard');
-
         // Render list dari API
         const html = items.map(item => `
             <div class="history-item">
                 <div>
                     <div class="history-resi">${this.escapeHtml(item.resi_no)}</div>
                     <div class="history-sub" style="display:flex; align-items:center; gap:4px;">
-                        <span>${item.formatted_date}</span>
+                        <span>${this.escapeHtml(item.formatted_date)}</span>
                         <span>•</span>
                         <span class="material-symbols-outlined" style="font-size:14px; color:#94a3b8;">timer</span>
-                        <span>${item.formatted_duration}</span>
+                        <span>${this.escapeHtml(item.formatted_duration)}</span>
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo('${item.video_url}', '${this.escapeHtml(item.resi_no)}', ${item.id})" title="Putar Video">
+                    <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo(${this._jsArg(item.video_url)}, ${this._jsArg(item.resi_no)}, ${parseInt(item.id, 10) || 'null'})" title="Putar Video">
                         <span class="material-symbols-outlined" style="font-size: 17px; color: #2563eb;">play_arrow</span>
                     </button>
                 </div>
@@ -764,15 +960,10 @@ class PackingStation {
 
         this.historyList.innerHTML = html;
 
-        // Jika doneCard masih ada & item pertama dari API bukan item yang baru,
-        // berarti race condition — sisipkan kembali doneCard di paling atas
-        if (doneCard) {
-            const firstApiResi = items[0]?.resi_no?.toLowerCase();
-            const doneResi = doneCard.querySelector('.history-resi')?.textContent?.toLowerCase();
-            if (doneResi && doneResi !== firstApiResi) {
-                this.historyList.insertBefore(doneCard, this.historyList.firstChild);
-            }
-        }
+        // Sisipkan kembali card lokal (urutan: yang paling baru di atas)
+        localCards.reverse().forEach(card => {
+            this.historyList.insertBefore(card, this.historyList.firstChild);
+        });
     }
 
 
@@ -834,9 +1025,15 @@ window.previewVideo = function(url, resi, id) {
         player.load();
 
         if (title) title.textContent = resi;
-        if (dlBtn && id) {
-            dlBtn.href = 'download.php?id=' + id;
-            dlBtn.style.display = 'inline-flex';
+        if (dlBtn) {
+            if (id) {
+                dlBtn.href = 'download.php?id=' + id;
+                dlBtn.style.display = 'inline-flex';
+            } else {
+                // Video lokal yang belum tersimpan di server → belum bisa di-download
+                dlBtn.removeAttribute('href');
+                dlBtn.style.display = 'none';
+            }
         }
         modal.classList.add('active');
 

@@ -1,7 +1,9 @@
 <?php
 // api/delete_packing.php
 header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../config/video.php';
 
 if (!isLoggedIn()) {
     http_response_code(401);
@@ -9,10 +11,16 @@ if (!isLoggedIn()) {
     exit;
 }
 
-$currentUser = getCurrentUser();
-if ($currentUser['role'] !== 'admin') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Metode request tidak diizinkan.']);
+    exit;
+}
+
+// Admin maupun Superadmin boleh menghapus (sebelumnya superadmin tertolak 403)
+if (!isAdminOrSuperAdmin()) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Hanya admin yang dapat menghapus data.']);
+    echo json_encode(['success' => false, 'message' => 'Hanya admin / superadmin yang dapat menghapus data.']);
     exit;
 }
 
@@ -35,9 +43,11 @@ try {
         exit;
     }
 
-    $filePath = __DIR__ . '/../uploads/videos/' . $row['video_filename'];
-    if (file_exists($filePath)) {
-        @unlink($filePath);
+    // Hapus semua varian file (mentah, hasil kompresi, temp)
+    foreach (packingVideoVariants((string)$row['video_filename']) as $path) {
+        if (is_file($path)) {
+            @unlink($path);
+        }
     }
 
     $delStmt = $db->prepare("DELETE FROM packings WHERE id = ?");

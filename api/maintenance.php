@@ -180,7 +180,10 @@ try {
                 $fullPath = $targetDir . DIRECTORY_SEPARATOR . $f;
                 if (is_file($fullPath)) {
                     $sz = @filesize($fullPath) ?: 0;
-                    if ($sz === 0 || str_ends_with(strtolower($f), '.tmp')) {
+                    // File .tmp adalah output FFmpeg yang sedang berjalan — hanya hapus jika sudah "basi" (>15 menit)
+                    $isStaleTmp = str_ends_with(strtolower($f), '.tmp') && (time() - (int)@filemtime($fullPath)) > 900;
+                    $isStaleZero = ($sz === 0) && (time() - (int)@filemtime($fullPath)) > 120;
+                    if ($isStaleZero || $isStaleTmp) {
                         @unlink($fullPath);
                         $cleanedCount++;
                         $freedBytes += $sz;

@@ -4,6 +4,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 date_default_timezone_set('Asia/Jakarta');
 require_once __DIR__ . '/config/auth.php';
+require_once __DIR__ . '/config/video.php';
 requireLogin();
 
 $user = getCurrentUser();
@@ -242,8 +243,9 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                             </div>
                         <?php else: ?>
                             <?php foreach ($recentPackings as $item): ?>
-                                <?php 
-                                    $videoUrl = 'uploads/videos/' . htmlspecialchars($item['video_filename']);
+                                <?php
+                                    resolvePackingVideo($item, $db);
+                                    $videoUrl = 'uploads/videos/' . rawurlencode($item['video_filename']);
                                     $durMin = floor($item['duration_seconds'] / 60);
                                     $durSec = $item['duration_seconds'] % 60;
                                     $formattedDur = sprintf('%02d:%02d', $durMin, $durSec);
@@ -260,7 +262,7 @@ $recentPackings = $stmtRecent ? $stmtRecent->fetchAll() : [];
                                         </div>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 6px;">
-                                        <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo('<?= $videoUrl ?>', '<?= htmlspecialchars($item['resi_no']) ?>', <?= $item['id'] ?>)" title="Putar Video">
+                                        <button class="btn btn-outline btn-sm btn-icon" onclick="window.previewVideo(<?= htmlspecialchars(json_encode($videoUrl), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode((string)$item['resi_no']), ENT_QUOTES) ?>, <?= (int)$item['id'] ?>)" title="Putar Video">
                                             <span class="material-symbols-outlined" style="font-size: 17px; color: #2563eb;">play_arrow</span>
                                         </button>
                                     </div>

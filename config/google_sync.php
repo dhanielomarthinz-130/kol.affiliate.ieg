@@ -79,6 +79,7 @@ function sendPackingToGoogle(int $packingId): array {
     }
 
     // Cari file video (prioritaskan versi compressed _cmp.mp4 jika sudah selesai dibuat FFmpeg)
+    require_once __DIR__ . '/video.php';
     $videosDir = realpath(__DIR__ . '/../uploads/videos');
     if (!$videosDir) {
         return [
@@ -87,19 +88,21 @@ function sendPackingToGoogle(int $packingId): array {
         ];
     }
 
-    $baseFilename = $packing['video_filename'];
-    $videoPath = $videosDir . DIRECTORY_SEPARATOR . $baseFilename;
+    // Jika kompresi sudah selesai, DB otomatis diarahkan ke file _cmp.mp4
+    $finalFilename = resolvePackingVideo($packing, $db);
+    $videoPath = $videosDir . DIRECTORY_SEPARATOR . $finalFilename;
 
-    // Cek apakah ada file versi compressed (_cmp.mp4)
-    $pathInfo = pathinfo($baseFilename);
-    $cmpFilename = $pathInfo['filename'] . '_cmp.mp4';
-    $cmpPath = $videosDir . DIRECTORY_SEPARATOR . $cmpFilename;
-
-    if (file_exists($cmpPath) && filesize($cmpPath) > 1000) {
-        $videoPath = $cmpPath;
-        $finalFilename = $cmpFilename;
-    } else {
-        $finalFilename = $baseFilename;
+    // Jika file mentah masih ada DAN file _cmp.mp4 juga ada → kompresi masih berjalan,
+    // tunggu sebentar (maks ±20 dtk) agar yang terkirim adalah versi hemat.
+    $cmpName = compressedVideoName($finalFilename);
+    $cmpPath = $videosDir . DIRECTORY_SEPARATOR . $cmpName;
+    if ($cmpName !== $finalFilename && (file_exists($cmpPath . '.tmp') || file_exists($cmpPath))) {
+        for ($w = 0; $w < 10; $w++) {
+            if (!file_exists($videoPath)) break; // mentah sudah dihapus → selesai
+            sleep(2);
+        }
+        $finalFilename = resolvePackingVideo($packing, $db);
+        $videoPath = $videosDir . DIRECTORY_SEPARATOR . $finalFilename;
     }
 
     $videoBase64 = '';

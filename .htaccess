@@ -1,8 +1,21 @@
 # .htaccess
-php_value upload_max_filesize 100M
-php_value post_max_size 100M
-php_value max_execution_time 300
-php_value max_input_time 300
+# Batas upload video. Direktif php_value hanya berlaku pada Apache mod_php (XAMPP);
+# dibungkus IfModule agar tidak menyebabkan "500 Internal Server Error" di hosting
+# yang menjalankan PHP sebagai CGI/FPM (di sana atur lewat php.ini / .user.ini).
+<IfModule mod_php.c>
+    php_value upload_max_filesize 1024M
+    php_value post_max_size 1024M
+    php_value max_execution_time 600
+    php_value max_input_time 600
+    php_value memory_limit 512M
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 1024M
+    php_value post_max_size 1024M
+    php_value max_execution_time 600
+    php_value max_input_time 600
+    php_value memory_limit 512M
+</IfModule>
 
 # Enable correct MIME types for video streaming
 AddType video/webm .webm
@@ -36,4 +49,3 @@ ErrorDocument 404 404.php
     RewriteCond %{REQUEST_FILENAME}.php !-f
     RewriteRule ^ 404.php [L]
 </IfModule>
-

@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../config/video.php';
 date_default_timezone_set('Asia/Jakarta');
 
 if (!isLoggedIn()) {
@@ -105,8 +106,10 @@ $rows = $stmt->fetchAll();
 
 // Add video URL and check if file exists
 foreach ($rows as &$row) {
-    $row['video_url'] = 'uploads/videos/' . $row['video_filename'];
-    $row['video_exists'] = file_exists(__DIR__ . '/../' . $row['video_url']);
+    // Gunakan file hasil kompresi FFmpeg bila sudah selesai (sekaligus sinkronkan DB)
+    resolvePackingVideo($row, $db);
+    $row['video_url'] = 'uploads/videos/' . rawurlencode($row['video_filename']);
+    $row['video_exists'] = is_file(VIDEOS_DIR . DIRECTORY_SEPARATOR . $row['video_filename']);
     $row['formatted_duration'] = sprintf('%02d:%02d', floor($row['duration_seconds'] / 60), $row['duration_seconds'] % 60);
     $row['formatted_size'] = round($row['video_filesize'] / (1024 * 1024), 2) . ' MB';
     $row['formatted_date'] = date('d/m/Y H:i:s', strtotime($row['created_at']));
@@ -114,6 +117,7 @@ foreach ($rows as &$row) {
     $row['gdrive_url'] = $row['gdrive_url'] ?? '';
     $row['synced_at_formatted'] = !empty($row['synced_at']) ? date('d/m/Y H:i', strtotime($row['synced_at'])) : '-';
 }
+unset($row);
 
 // Calculate total packings today
 $todayDate = date('Y-m-d');

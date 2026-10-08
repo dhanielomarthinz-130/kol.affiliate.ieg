@@ -33,6 +33,11 @@ try {
     $isAdmin = isAdminOrSuperAdmin();
     $action = trim($_GET['action'] ?? $_POST['action'] ?? '');
 
+    // Lepas lock session: upload ke Google bisa >60 dtk dan akan memblokir request lain dari user yang sama
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
     function buildFilterWhere(array $input): array {
         $where = ["(gdrive_url IS NULL OR gdrive_url = '')"];
         $params = [];

@@ -18,12 +18,14 @@ try {
     $operators = $stmtOps->fetchAll();
 } catch (Exception $e) {}
 
+$loginMode = (($_POST['login_mode'] ?? '') === 'pin') ? 'pin' : 'standard';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+    $password = trim((string)($_POST['password'] ?? ''));
 
-    if (empty($username) || empty($password)) {
-        $error = 'Username dan password wajib diisi!';
+    if ($username === '' || $password === '') {
+        $error = ($loginMode === 'pin') ? 'Pilih nama operator dan masukkan PIN 4 digit!' : 'Username dan password wajib diisi!';
     } else {
         $maintError = null;
         if (loginUser($username, $password, $maintError)) {
@@ -36,7 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Location: maintenance_notice');
                 exit;
             }
-            $error = 'Username atau password salah!';
+            $error = ($loginMode === 'pin')
+                ? 'PIN salah, atau PIN belum diatur untuk operator ini. Minta admin mengatur PIN di menu Kelola User.'
+                : 'Username atau password salah!';
         }
     }
 }
@@ -683,6 +687,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <!-- Hidden PIN Secret Field -->
                 <input type="hidden" name="password" id="pinSecretInput" value="">
+                <input type="hidden" name="login_mode" value="pin">
 
                 <!-- 4-Digit PIN Indicator Dots -->
                 <div style="text-align:center; margin-top:1.15rem;">
@@ -819,8 +824,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ico.textContent = isHidden ? 'visibility_off' : 'visibility';
         }
 
+        // Buka kembali tab PIN jika percobaan login PIN sebelumnya gagal
+        <?php if ($loginMode === 'pin'): ?>
+        switchLoginMode('pin');
+        <?php endif; ?>
+
         // Submit loading state on standard form
-        document.getElementById('loginForm').addEventListener('submit', function() {
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const u = document.getElementById('inputUsername');
+            const p = document.getElementById('inputPassword');
+            if (!u.value.trim() || !p.value) {
+                e.preventDefault();
+                (!u.value.trim() ? u : p).focus();
+                return;
+            }
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
             btn.innerHTML = `

@@ -8,3 +8,4 @@ database/*.sqlite
 Thumbs.db
 .vscode/
 scratch/
+_backup_*/

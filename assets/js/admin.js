@@ -163,21 +163,28 @@ document.addEventListener('DOMContentLoaded', () => {
         _fpTo.setDate(localToday, false);
     }
 
-    loadStats();
-    loadOperatorsFilter().then(() => {
+    setupEventListeners();
+    checkGlobalMaintenanceStatus();
+    startAutoRefresh();
+
+    // Isi dropdown operator dulu (jika URL membawa ?operator=) agar filter benar-benar diterapkan
+    // pada pemuatan pertama; sebelumnya tabel dimuat tanpa filter lalu URL kehilangan parameternya.
+    const applyOperatorThenLoad = () => {
         if (opFromUrl) {
             const opEl = document.getElementById('filterOperator');
             if (opEl) opEl.value = opFromUrl;
         }
-    });
-
-    setupEventListeners();
-    updateGoogleSyncBadge();
-    checkGlobalMaintenanceStatus();
-    startAutoRefresh();
-
-    // Buka view sesuai URL parameter
-    switchAdminView(pageFromUrl || 'packings', false);
+        loadStats();
+        updateGoogleSyncBadge();
+        // Buka view sesuai URL parameter
+        switchAdminView(pageFromUrl || 'packings', false);
+    };
+    if (opFromUrl) {
+        loadOperatorsFilter().then(applyOperatorThenLoad).catch(applyOperatorThenLoad);
+    } else {
+        loadOperatorsFilter();
+        applyOperatorThenLoad();
+    }
 
     window.addEventListener('popstate', () => {
         const params = new URLSearchParams(window.location.search);
@@ -190,6 +197,14 @@ document.addEventListener('DOMContentLoaded', () => {
 // VIEW SWITCHING (TABS)
 // ==========================================
 function switchAdminView(view, updateUrl = true) {
+    // View maintenance hanya ada untuk Superadmin; admin biasa diarahkan ke data packing
+    // (sebelumnya halaman menjadi kosong + toast "Akses ditolak").
+    if (view === 'maintenance' && !document.getElementById('viewMaintenance')) {
+        view = 'packings';
+    }
+    if (!['packings', 'users', 'maintenance'].includes(view)) {
+        view = 'packings';
+    }
     _currentView = view;
 
     const navPackings = document.getElementById('navPackings');
@@ -675,7 +690,7 @@ function renderTable(rows, total, page, totalPages) {
             </td>
             <td>
                 <div style="display:flex; gap:6px;">
-                    <button class="btn btn-primary btn-sm" onclick="openAdminVideoModal('${row.video_url}', '${escapeHtml(row.resi_no)}', '${escapeHtml(row.operator_name)}', '${row.formatted_duration}', '${row.formatted_date}', ${row.id})">
+                    <button class="btn btn-primary btn-sm" onclick="openAdminVideoModal(${jsArg(row.video_url)}, ${jsArg(row.resi_no)}, ${jsArg(row.operator_name)}, ${jsArg(row.formatted_duration)}, ${jsArg(row.formatted_date)}, ${parseInt(row.id, 10)})">
                         <span class="material-symbols-outlined" style="font-size:16px;">play_circle</span>
                         <span>Putar</span>
                     </button>
@@ -683,7 +698,7 @@ function renderTable(rows, total, page, totalPages) {
                         <span class="material-symbols-outlined" style="font-size:16px;">download</span>
                         <span>MP4</span>
                     </a>
-                    <button class="btn btn-danger btn-sm" onclick="deletePackingRecord(${row.id}, '${escapeHtml(row.resi_no)}')" title="Hapus Data">
+                    <button class="btn btn-danger btn-sm" onclick="deletePackingRecord(${parseInt(row.id, 10)}, ${jsArg(row.resi_no)})" title="Hapus Data">
                         <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
                     </button>
                 </div>
@@ -740,7 +755,8 @@ async function loadUsersTable() {
                 const hasPin   = (parseInt(u.has_pin) === 1);
                 const roleClass = (u.role === 'superadmin') ? 'badge-role-superadmin' : (u.role === 'admin' ? 'badge-role-admin' : 'badge-role-operator');
                 const roleLabel = (u.role === 'superadmin') ? 'SUPERADMIN' : (u.role === 'admin' ? 'ADMIN' : 'OPERATOR');
-                const createdStr = u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
+                const createdDate = parseDbDate(u.created_at);
+                const createdStr = createdDate ? createdDate.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
                 const pinBadge = (u.role === 'operator') ? (hasPin
                     ? `<span title="PIN sudah diatur" style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(99,102,241,0.12);color:#6366f1;border:1px solid rgba(99,102,241,0.25);margin-left:5px;"><span class="material-symbols-outlined" style="font-size:11px;">pin</span>PIN ✓</span>`
                     : `<span title="PIN belum diatur" style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(148,163,184,0.12);color:#94a3b8;border:1px solid rgba(148,163,184,0.2);margin-left:5px;"><span class="material-symbols-outlined" style="font-size:11px;">pin</span>No PIN</span>`
@@ -777,16 +793,16 @@ async function loadUsersTable() {
                         </td>
                         <td style="text-align:right;">
                             <div style="display:flex; justify-content:flex-end; gap:6px;">
-                                <button class="btn btn-sm" onclick="openEditUserModal(${u.id}, '${escapeHtml(u.name)}', '${escapeHtml(u.username)}', '${u.role}', ${hasPin ? 1 : 0})" title="Edit Pengguna (Nama, Password / PIN)" style="font-size:0.75rem; padding:4px 9px; display:inline-flex; align-items:center; gap:4px; color:#0369a1; background:#e0f2fe; border:1px solid #bae6fd; border-radius:8px; font-weight:600; cursor:pointer;">
+                                <button class="btn btn-sm" onclick="openEditUserModal(${parseInt(u.id, 10)}, ${jsArg(u.name)}, ${jsArg(u.username)}, ${jsArg(u.role)}, ${hasPin ? 1 : 0})" title="Edit Pengguna (Nama, Password / PIN)" style="font-size:0.75rem; padding:4px 9px; display:inline-flex; align-items:center; gap:4px; color:#0369a1; background:#e0f2fe; border:1px solid #bae6fd; border-radius:8px; font-weight:600; cursor:pointer;">
                                     <span class="material-symbols-outlined" style="font-size:14px;">edit</span>
                                     <span>Edit</span>
                                 </button>
-                                <button class="btn btn-sm ${isActive ? 'btn-outline' : 'btn-success'}" onclick="toggleUserStatus(${u.id}, '${escapeHtml(u.name)}', ${isActive ? 1 : 0})" title="${isActive ? 'Klik untuk Menonaktifkan akun' : 'Klik untuk Mengaktifkan akun kembali'}" style="font-size:0.75rem; padding:4px 9px;">
+                                <button class="btn btn-sm ${isActive ? 'btn-outline' : 'btn-success'}" onclick="toggleUserStatus(${parseInt(u.id, 10)}, ${jsArg(u.name)}, ${isActive ? 1 : 0})" title="${isActive ? 'Klik untuk Menonaktifkan akun' : 'Klik untuk Mengaktifkan akun kembali'}" style="font-size:0.75rem; padding:4px 9px;">
                                     <span class="material-symbols-outlined" style="font-size:15px;">${isActive ? 'power_settings_new' : 'check'}</span>
                                     <span>${isActive ? 'Inactive' : 'Aktifkan'}</span>
                                 </button>
-                                ${u.role === 'operator' ? `<button class="btn btn-sm" onclick="openSetPinModal(${u.id}, '${escapeHtml(u.name)}')" title="Atur PIN Login Operator" style="font-size:0.75rem; padding:4px 9px; background:linear-gradient(135deg,#6366f1,#818cf8); color:#fff; border:none; border-radius:8px; display:inline-flex; align-items:center; gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">pin</span><span>PIN</span></button>` : ''}
-                                <button class="btn btn-danger btn-sm" onclick="deleteUserRecord(${u.id}, '${escapeHtml(u.username)}')" title="Hapus Akun Pengguna" style="padding:4px 8px;">
+                                ${u.role === 'operator' ? `<button class="btn btn-sm" onclick="openSetPinModal(${parseInt(u.id, 10)}, ${jsArg(u.name)})" title="Atur PIN Login Operator" style="font-size:0.75rem; padding:4px 9px; background:linear-gradient(135deg,#6366f1,#818cf8); color:#fff; border:none; border-radius:8px; display:inline-flex; align-items:center; gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">pin</span><span>PIN</span></button>` : ''}
+                                <button class="btn btn-danger btn-sm" onclick="deleteUserRecord(${parseInt(u.id, 10)}, ${jsArg(u.username)})" title="Hapus Akun Pengguna" style="padding:4px 8px;">
                                     <span class="material-symbols-outlined" style="font-size:15px;">delete</span>
                                 </button>
                             </div>
@@ -922,12 +938,12 @@ async function loadDbTablesList() {
                     </td>
                     <td style="padding:14px 18px; text-align:right; vertical-align:middle; white-space:nowrap;">
                         <div style="display:inline-flex; align-items:center; gap:8px;">
-                            <button onclick="openDbDataManageModal('${escapeHtml(t.name)}', '${escapeHtml(t.label || t.name)}', '${escapeHtml(t.icon || 'table_chart')}')" class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; gap:5px; padding:0.42rem 0.85rem; font-size:0.78rem;">
+                            <button onclick="openDbDataManageModal(${jsArg(t.name)}, ${jsArg(t.label || t.name)}, ${jsArg(t.icon || 'table_chart')})" class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; gap:5px; padding:0.42rem 0.85rem; font-size:0.78rem;">
                                 <span class="material-symbols-outlined" style="font-size:15px;">manage_search</span>
                                 <span>Kelola &amp; Hapus Data</span>
                             </button>
                             ${t.can_clear && t.count > 0 ? `
-                                <button onclick="deleteAllTableRows('${escapeHtml(t.name)}')" class="btn btn-danger btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:0.42rem 0.75rem; font-size:0.78rem;" title="Kosongkan semua baris tabel ini">
+                                <button onclick="deleteAllTableRows(${jsArg(t.name)})" class="btn btn-danger btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:0.42rem 0.75rem; font-size:0.78rem;" title="Kosongkan semua baris tabel ini">
                                     <span class="material-symbols-outlined" style="font-size:15px;">delete_sweep</span>
                                     <span>Kosongkan</span>
                                 </button>
@@ -1087,7 +1103,7 @@ function renderDbModalRows(columns, rows, tableName) {
             bHtml += `<td style="${cellStyle} font-size:0.76rem; color:#475569;">${sizeFormatted}</td>`;
             bHtml += `<td style="${cellStyle}">${driveBadge}</td>`;
             bHtml += `<td style="${cellStyle} text-align:center;">
-                <button onclick="deleteDbModalRow('packings', ${rowId}, '${escapeHtml(r.resi_no || '#' + rowId)}')" class="btn btn-danger btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; font-size:0.74rem;" title="Hapus data ini">
+                <button onclick="deleteDbModalRow('packings', ${rowId}, ${jsArg(r.resi_no || '#' + rowId)})" class="btn btn-danger btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; font-size:0.74rem;" title="Hapus data ini">
                     <span class="material-symbols-outlined" style="font-size:14px;">delete</span>
                     <span>Hapus</span>
                 </button>
@@ -1109,7 +1125,7 @@ function renderDbModalRows(columns, rows, tableName) {
             bHtml += `<td style="${cellStyle}">${statusBadge}</td>`;
             bHtml += `<td style="${cellStyle} font-size:0.74rem; color:#64748b;">${escapeHtml(r.created_at || '—')}</td>`;
             bHtml += `<td style="${cellStyle} text-align:center;">
-                <button onclick="deleteDbModalRow('users', ${rowId}, '${escapeHtml(r.username || '#' + rowId)}')" class="btn btn-danger btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; font-size:0.74rem;" title="Hapus pengguna ini">
+                <button onclick="deleteDbModalRow('users', ${rowId}, ${jsArg(r.username || '#' + rowId)})" class="btn btn-danger btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; font-size:0.74rem;" title="Hapus pengguna ini">
                     <span class="material-symbols-outlined" style="font-size:14px;">delete</span>
                     <span>Hapus</span>
                 </button>
@@ -1365,7 +1381,8 @@ function _renderMaintenanceModeUI(cfg) {
     if (btnLabel) btnLabel.textContent = isActive ? 'Matikan Maintenance (Kembali Normal)' : 'Aktifkan Mode Maintenance';
 
     if (lastEl && cfg.updated_at) {
-        const ts = new Date(cfg.updated_at).toLocaleString('id-ID');
+        const tsDate = parseDbDate(cfg.updated_at);
+        const ts = tsDate ? tsDate.toLocaleString('id-ID') : String(cfg.updated_at);
         lastEl.textContent = isActive ? `Diaktifkan oleh ${cfg.updated_by || 'Daniel'} pada ${ts}` : `Terakhir dinonaktifkan: ${ts}`;
     } else if (lastEl) {
         lastEl.textContent = isActive ? `Diaktifkan oleh ${cfg.updated_by || 'Daniel'}` : 'Status: Normal';
@@ -1405,7 +1422,13 @@ async function toggleMaintenanceMode() {
     } catch (e) {
         showAdminToast('Kesalahan jaringan: ' + e.message, 'error');
     } finally {
-        if (btn) btn.disabled = false;
+        if (btn) {
+            // Pulihkan struktur tombol (span #maintToggleIcon / #maintToggleLabel) yang tadi ditimpa spinner,
+            // lalu render ulang label sesuai status sebenarnya. Sebelumnya tombol macet di "Memproses...".
+            btn.innerHTML = `<span class="material-symbols-outlined" id="maintToggleIcon" style="font-size:18px;">power_settings_new</span> <span id="maintToggleLabel">Aktifkan Maintenance</span>`;
+            btn.disabled = false;
+            try { await checkGlobalMaintenanceStatus(); } catch (e) {}
+        }
     }
 }
 
@@ -1659,7 +1682,12 @@ async function startBatchSync() {
     const btnClose = document.getElementById('btnCloseBatchSync');
 
     if (btnDone) btnDone.style.display = 'none';
-    if (btnCancel) btnCancel.style.display = 'inline-flex';
+    if (btnCancel) {
+        btnCancel.style.display = 'inline-flex';
+        btnCancel.disabled = false;
+        if (!btnCancel.dataset.origHtml) btnCancel.dataset.origHtml = btnCancel.innerHTML;
+        btnCancel.innerHTML = btnCancel.dataset.origHtml;
+    }
     if (btnClose) btnClose.style.display = 'inline-flex';
     if (noticeBox) {
         noticeBox.style.display = 'none';
@@ -1883,6 +1911,7 @@ function stopBatchSync() {
     _isBatchSyncRunning = false;
     const btnCancel = document.getElementById('btnCancelBatchSync');
     if (btnCancel) {
+        if (!btnCancel.dataset.origHtml) btnCancel.dataset.origHtml = btnCancel.innerHTML;
         btnCancel.disabled = true;
         btnCancel.textContent = 'Menghentikan...';
     }
@@ -2007,6 +2036,27 @@ function showAdminToast(msg, type = 'info') {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
     }, 4000);
+}
+
+// Argumen string yang aman di dalam atribut onclick="..." (tahan tanda kutip ' dan ")
+function jsArg(v) {
+    return escapeHtml(JSON.stringify(String(v ?? '')));
+}
+
+// Format byte → KB/MB/GB (dipakai modal Kelola Data tabel packings)
+function formatBytes(bytes, decimals = 2) {
+    const b = Number(bytes) || 0;
+    if (b <= 0) return '0 B';
+    const k = 1024, sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.min(Math.floor(Math.log(b) / Math.log(k)), sizes.length - 1);
+    return parseFloat((b / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i];
+}
+
+// Parse "YYYY-MM-DD HH:MM:SS" (SQLite/MySQL) dengan aman di semua browser (Safari gagal tanpa 'T')
+function parseDbDate(v) {
+    if (!v) return null;
+    const d = new Date(String(v).replace(' ', 'T'));
+    return isNaN(d.getTime()) ? null : d;
 }
 
 function escapeHtml(str) {

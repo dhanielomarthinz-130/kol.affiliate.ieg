@@ -87,8 +87,13 @@ if ($action === 'get_table') {
     $colsRaw = $db->query("PRAGMA table_info(`$table`)")->fetchAll(PDO::FETCH_ASSOC);
     $columns = array_column($colsRaw, 'name');
 
+    // Jangan kirim hash password / PIN ke browser
+    $hidden = ['password', 'pin'];
+    $columns = array_values(array_filter($columns, fn($c) => !in_array($c, $hidden, true)));
+    $selectCols = !empty($columns) ? implode(', ', array_map(fn($c) => "`$c`", $columns)) : '*';
+
     // Get all rows (max 1000)
-    $rows = $db->query("SELECT * FROM `$table` ORDER BY rowid DESC LIMIT 1000")->fetchAll(PDO::FETCH_ASSOC);
+    $rows = $db->query("SELECT {$selectCols} FROM `$table` ORDER BY rowid DESC LIMIT 1000")->fetchAll(PDO::FETCH_ASSOC);
     $count = $db->query("SELECT COUNT(*) FROM `$table`")->fetchColumn();
 
     echo json_encode([
