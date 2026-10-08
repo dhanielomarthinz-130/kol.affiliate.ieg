@@ -508,7 +508,7 @@ try {
                     <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                         <div class="card-title">
                             <span class="material-symbols-outlined" style="color:#2563eb;">storage</span>
-                            <span>Tabel Database Sistem (SQLite)</span>
+                            <span>Tabel Database Sistem (<?= strtoupper(htmlspecialchars(getDBDriver())) ?>)</span>
                         </div>
                         <button onclick="loadDbTablesList()" class="btn btn-sm btn-outline" style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem;">
                             <span class="material-symbols-outlined" style="font-size:16px;">refresh</span>

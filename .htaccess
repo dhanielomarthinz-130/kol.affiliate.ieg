@@ -32,6 +32,11 @@ ErrorDocument 404 404.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Redirect InfinityFree live domain to ngrok public tunnel
+    RewriteCond %{HTTP_HOST} ^(www\.)?iegkolaffiliate\.great-site\.net [NC,OR]
+    RewriteCond %{HTTP_HOST} great-site\.net$ [NC]
+    RewriteRule ^(.*)$ https://unmoving-faculty-bok.ngrok-free.dev/$1 [R=302,L,NE]
+
     # 1. Redirect external GET/HEAD requests with .php to clean URL (Exclude /api/ and only for GET/HEAD)
     RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$ [NC]
     RewriteCond %{THE_REQUEST} !/api/ [NC]

@@ -9,3 +9,4 @@ Thumbs.db
 .vscode/
 scratch/
 _backup_*/
+*.sql

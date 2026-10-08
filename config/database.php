@@ -10,6 +10,22 @@ define('DB_MYSQL_NAME', 'if0_38464190_iegkolaffiliate');
 define('DB_MYSQL_USER', 'if0_38464190');
 define('DB_MYSQL_PASS', 'Dhaniel0');
 
+// Local MySQL Configuration (Laragon / XAMPP / Local Server)
+defined('DB_LOCAL_MYSQL_HOST') or define('DB_LOCAL_MYSQL_HOST', getenv('DB_HOST') ?: '127.0.0.1');
+defined('DB_LOCAL_MYSQL_PORT') or define('DB_LOCAL_MYSQL_PORT', getenv('DB_PORT') ?: '3306');
+defined('DB_LOCAL_MYSQL_NAME') or define('DB_LOCAL_MYSQL_NAME', getenv('DB_NAME') ?: 'iegkolaffiliate');
+defined('DB_LOCAL_MYSQL_USER') or define('DB_LOCAL_MYSQL_USER', getenv('DB_USER') ?: 'root');
+defined('DB_LOCAL_MYSQL_PASS') or define('DB_LOCAL_MYSQL_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
+
+function getDBDriver(): string {
+    try {
+        $db = getDB();
+        return strtolower((string)$db->getAttribute(PDO::ATTR_DRIVER_NAME) ?: 'mysql');
+    } catch (\Throwable $e) {
+        return 'sqlite';
+    }
+}
+
 function getDB(bool $forceReconnect = false) {
     static $db = null;
     if ($db !== null && !$forceReconnect) {
@@ -54,7 +70,8 @@ function getDB(bool $forceReconnect = false) {
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     PDO::ATTR_TIMEOUT => 10,
-                    PDO::ATTR_PERSISTENT => false
+                    PDO::ATTR_PERSISTENT => false,
+                    PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true
                 ]);
                 $db->exec("SET time_zone = '+07:00'");
                 @$db->exec("SET SESSION wait_timeout = 600");
@@ -66,9 +83,43 @@ function getDB(bool $forceReconnect = false) {
                 error_log("MySQL connection failed on {$host}: " . $e->getMessage());
             }
         }
+    } else {
+        // Local Server (Laragon / XAMPP / On-Premise) - Prioritas MySQL Lokal
+        $candidateHosts = array_unique([DB_LOCAL_MYSQL_HOST, '127.0.0.1', 'localhost']);
+        $candidateDbs   = array_unique([DB_LOCAL_MYSQL_NAME, 'iegkolaffiliate', 'if0_38464190_iegkolaffiliate']);
+        $candidateCredentials = [
+            [DB_LOCAL_MYSQL_USER, DB_LOCAL_MYSQL_PASS],
+            ['root', '']
+        ];
+
+        foreach ($candidateHosts as $host) {
+            foreach ($candidateDbs as $dbname) {
+                foreach ($candidateCredentials as [$uUser, $uPass]) {
+                    try {
+                        $port = DB_LOCAL_MYSQL_PORT ?: '3306';
+                        $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";
+                        $db = new PDO($dsn, $uUser, $uPass, [
+                            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                            PDO::ATTR_TIMEOUT => 3,
+                            PDO::ATTR_PERSISTENT => false,
+                            PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true
+                        ]);
+                        $db->exec("SET time_zone = '+07:00'");
+                        @$db->exec("SET SESSION wait_timeout = 600");
+                        @$db->exec("SET SESSION interactive_timeout = 600");
+                        initMySQL($db);
+                        migrateTables($db);
+                        return $db;
+                    } catch (Exception $e) {
+                        // Coba opsi berikutnya
+                    }
+                }
+            }
+        }
     }
 
-    // Local / SQLite Driver
+    // Local / SQLite Fallback Driver
     $dbDir = dirname(DB_SQLITE_FILE);
     if (!is_dir($dbDir)) {
         @mkdir($dbDir, 0777, true);

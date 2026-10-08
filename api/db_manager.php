@@ -17,10 +17,11 @@ if (!isSuperAdmin()) {
 }
 
 $db     = getDB();
+$driver = getDBDriver();
 $action = $_REQUEST['action'] ?? 'list_tables';
 
 // ── Whitelist of allowed tables ──
-$ALLOWED_TABLES = ['packings', 'users', 'sqlite_sequence'];
+$ALLOWED_TABLES = ($driver === 'sqlite') ? ['packings', 'users', 'sqlite_sequence'] : ['packings', 'users'];
 
 // ── List all tables ──────────────────────────────────────────
 if ($action === 'list_tables') {
@@ -70,7 +71,7 @@ if ($action === 'list_tables') {
             'can_delete' => $meta[$t]['can_delete'] ?? true,
         ];
     }
-    echo json_encode(['success' => true, 'tables' => $tables]);
+    echo json_encode(['success' => true, 'tables' => $tables, 'driver' => $driver]);
     exit;
 }
 
@@ -84,8 +85,13 @@ if ($action === 'get_table') {
     }
 
     // Get columns
-    $colsRaw = $db->query("PRAGMA table_info(`$table`)")->fetchAll(PDO::FETCH_ASSOC);
-    $columns = array_column($colsRaw, 'name');
+    if ($driver === 'sqlite') {
+        $colsRaw = $db->query("PRAGMA table_info(`$table`)")->fetchAll(PDO::FETCH_ASSOC);
+        $columns = array_column($colsRaw, 'name');
+    } else {
+        $colsRaw = $db->query("DESCRIBE `$table`")->fetchAll(PDO::FETCH_ASSOC);
+        $columns = array_column($colsRaw, 'Field');
+    }
 
     // Jangan kirim hash password / PIN ke browser
     $hidden = ['password', 'pin'];
@@ -93,12 +99,14 @@ if ($action === 'get_table') {
     $selectCols = !empty($columns) ? implode(', ', array_map(fn($c) => "`$c`", $columns)) : '*';
 
     // Get all rows (max 1000)
-    $rows = $db->query("SELECT {$selectCols} FROM `$table` ORDER BY rowid DESC LIMIT 1000")->fetchAll(PDO::FETCH_ASSOC);
+    $orderCol = in_array('id', $columns, true) ? 'id' : (($driver === 'sqlite') ? 'rowid' : '1');
+    $rows = $db->query("SELECT {$selectCols} FROM `$table` ORDER BY {$orderCol} DESC LIMIT 1000")->fetchAll(PDO::FETCH_ASSOC);
     $count = $db->query("SELECT COUNT(*) FROM `$table`")->fetchColumn();
 
     echo json_encode([
         'success'  => true,
         'table'    => $table,
+        'driver'   => $driver,
         'columns'  => $columns,
         'rows'     => $rows,
         'total'    => (int)$count
@@ -162,7 +170,11 @@ if ($action === 'delete_all_rows' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $db->exec("DELETE FROM `$table`");
         // Reset auto-increment
-        $db->exec("DELETE FROM sqlite_sequence WHERE name = '$table'");
+        if ($driver === 'sqlite') {
+            @$db->exec("DELETE FROM sqlite_sequence WHERE name = '$table'");
+        } else {
+            @$db->exec("ALTER TABLE `$table` AUTO_INCREMENT = 1");
+        }
         echo json_encode(['success' => true, 'message' => "Semua data di tabel '$table' berhasil dihapus."]);
     } catch (Exception $e) {
         http_response_code(500);

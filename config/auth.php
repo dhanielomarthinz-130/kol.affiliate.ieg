@@ -7,6 +7,14 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Redirect otomatis dari InfinityFree ke tunnel Ngrok
+$httpHost = strtolower($_SERVER['HTTP_HOST'] ?? '');
+if (strpos($httpHost, 'great-site.net') !== false || strpos($httpHost, 'infinityfree') !== false) {
+    $uri = $_SERVER['REQUEST_URI'] ?? '/';
+    header('Location: https://unmoving-faculty-bok.ngrok-free.dev' . $uri, true, 302);
+    exit;
+}
+
 function isLoggedIn() {
     return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
 }

@@ -81,8 +81,15 @@ try {
 
         // Database size
         $dbSize = 0;
-        if (file_exists(DB_SQLITE_FILE)) {
-            $dbSize = @filesize(DB_SQLITE_FILE) ?: 0;
+        if (getDBDriver() === 'sqlite') {
+            if (file_exists(DB_SQLITE_FILE)) {
+                $dbSize = @filesize(DB_SQLITE_FILE) ?: 0;
+            }
+        } else {
+            try {
+                $stmtDbSz = $db->query("SELECT SUM(data_length + index_length) as sz FROM information_schema.tables WHERE table_schema = DATABASE()");
+                $dbSize = intval($stmtDbSz->fetchColumn() ?: 0);
+            } catch (Throwable $e) {}
         }
 
         // Packings stats safely
@@ -162,9 +169,20 @@ try {
     }
 
     if ($action === 'optimize_db' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $db->exec("VACUUM");
-        $db->exec("ANALYZE");
-        echo json_encode(['success' => true, 'message' => 'Database berhasil dioptimalkan (VACUUM & ANALYZE selesai)!']);
+        if (getDBDriver() === 'sqlite') {
+            $db->exec("VACUUM");
+            $db->exec("ANALYZE");
+        } else {
+            try {
+                $st1 = $db->query("OPTIMIZE TABLE `packings`, `users`");
+                if ($st1) $st1->fetchAll();
+            } catch (Throwable $e) {}
+            try {
+                $st2 = $db->query("ANALYZE TABLE `packings`, `users`");
+                if ($st2) $st2->fetchAll();
+            } catch (Throwable $e) {}
+        }
+        echo json_encode(['success' => true, 'message' => 'Database berhasil dioptimalkan (OPTIMIZE & ANALYZE selesai)!']);
         exit;
     }
 
