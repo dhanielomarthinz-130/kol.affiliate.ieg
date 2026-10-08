@@ -68,11 +68,16 @@ if ($resiNo === '') {
     respond(['success' => false, 'message' => 'Nomor Resi / Invoice tidak boleh kosong.'], 400);
 }
 
-if (!isset($_FILES['video'])) {
+// Mode upload bertahap (chunked): client sudah mengirim potongan via api/upload_chunk.php
+$uploadId    = trim($_POST['upload_id'] ?? '');
+$totalChunks = intval($_POST['total_chunks'] ?? 0);
+$isChunked   = ($uploadId !== '' && $totalChunks > 0 && !isset($_FILES['video']));
+
+if (!$isChunked && !isset($_FILES['video'])) {
     respond(['success' => false, 'message' => 'File video tidak terkirim ke server (FILE_MISSING).'], 400);
 }
 
-if ($_FILES['video']['error'] !== UPLOAD_ERR_OK) {
+if (!$isChunked && $_FILES['video']['error'] !== UPLOAD_ERR_OK) {
     $errCode = (int)$_FILES['video']['error'];
     $uploadErrors = [
         UPLOAD_ERR_INI_SIZE   => 'Ukuran video melebihi upload_max_filesize (' . ini_get('upload_max_filesize') . ') di server.',
@@ -89,7 +94,7 @@ if ($_FILES['video']['error'] !== UPLOAD_ERR_OK) {
     ], 400);
 }
 
-if ((int)$_FILES['video']['size'] <= 0) {
+if (!$isChunked && (int)$_FILES['video']['size'] <= 0) {
     respond(['success' => false, 'message' => 'File video kosong (0 byte). Rekaman tidak menghasilkan data — periksa kamera.'], 400);
 }
 
@@ -101,6 +106,7 @@ $stmtCheck = $db->prepare("SELECT id, operator_name FROM packings WHERE resi_no 
 $stmtCheck->execute([$resiNo]);
 $existing = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 if ($existing) {
+    if ($isChunked) removeChunkDir($uploadId);
     respond([
         'success' => false,
         'duplicate' => true,
@@ -108,7 +114,6 @@ if ($existing) {
     ], 409);
 }
 
-$fileTmp   = $_FILES['video']['tmp_name'];
 $safeResi  = preg_replace('/[^A-Za-z0-9_-]/', '_', $resiNo);
 $timestamp = date('Ymd_His');
 $random    = substr(bin2hex(random_bytes(4)), 0, 6);
@@ -123,25 +128,51 @@ if (!$targetDir || !is_writable($targetDir)) {
 }
 $targetDir .= DIRECTORY_SEPARATOR;
 
-// STEP 1: Deteksi tipe file (finfo + fallback ke tipe yang dikirim browser)
+// STEP 1: Tentukan sumber file & tipe
+if ($isChunked) {
+    // Rakit potongan ke file sementara di folder videos (nama final ditentukan setelah tahu tipenya)
+    $assembled = $targetDir . "{$safeResi}_{$timestamp}_{$random}.assembling";
+    $err = assembleChunks($uploadId, $totalChunks, $assembled);
+    if ($err !== null) {
+        respond(['success' => false, 'message' => $err], 400);
+    }
+    $fileTmp    = $assembled;
+    $clientMime = strtolower((string)($_POST['video_type'] ?? ''));
+    $clientExt  = strtolower(trim($_POST['video_ext'] ?? ''));
+} else {
+    $fileTmp    = $_FILES['video']['tmp_name'];
+    $clientMime = strtolower((string)($_FILES['video']['type'] ?? ''));
+    $clientExt  = strtolower(pathinfo((string)$_FILES['video']['name'], PATHINFO_EXTENSION));
+}
+
+if (!is_file($fileTmp) || filesize($fileTmp) <= 0) {
+    if ($isChunked) @unlink($fileTmp);
+    respond(['success' => false, 'message' => 'File video kosong (0 byte). Rekaman tidak menghasilkan data — periksa kamera.'], 400);
+}
+
 $mime = '';
 if (function_exists('finfo_open')) {
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $mime  = (string)finfo_file($finfo, $fileTmp);
     finfo_close($finfo);
 }
-$clientMime = strtolower((string)($_FILES['video']['type'] ?? ''));
-$clientExt  = strtolower(pathinfo((string)$_FILES['video']['name'], PATHINFO_EXTENSION));
 $isMp4 = str_contains($mime, 'mp4') || str_contains($mime, 'quicktime')
       || (!str_contains($mime, 'webm') && (str_contains($clientMime, 'mp4') || $clientExt === 'mp4'));
 $rawExt = $isMp4 ? 'mp4' : 'webm';
 
-// STEP 2: Pindahkan file
+// STEP 2: Letakkan file di uploads/videos dengan nama final
 $finalFilename = "{$safeResi}_{$timestamp}_{$random}.{$rawExt}";
 $finalFilePath = $targetDir . $finalFilename;
 
-if (!move_uploaded_file($fileTmp, $finalFilePath)) {
-    respond(['success' => false, 'message' => 'Gagal memindahkan file upload ke folder uploads/videos.'], 500);
+if ($isChunked) {
+    if (!@rename($fileTmp, $finalFilePath)) {
+        @unlink($fileTmp);
+        respond(['success' => false, 'message' => 'Gagal menyimpan file video hasil rakitan ke folder uploads/videos.'], 500);
+    }
+} else {
+    if (!move_uploaded_file($fileTmp, $finalFilePath)) {
+        respond(['success' => false, 'message' => 'Gagal memindahkan file upload ke folder uploads/videos (cek izin / kuota disk).'], 500);
+    }
 }
 $finalFileSize = filesize($finalFilePath);
 
@@ -182,7 +213,19 @@ $responseJson = json_encode([
     ]
 ]);
 
-// STEP 4: Flush response ke browser terlebih dahulu
+// Apakah ada pekerjaan lanjutan setelah response (FFmpeg / auto-sync Google)?
+require_once __DIR__ . '/../config/google_sync.php';
+$syncConfig = getGoogleSyncConfig();
+$needAutoSync = !empty($syncConfig['auto_sync']) && !empty($syncConfig['gas_webapp_url']);
+$canCompress  = canRunFfmpeg();
+
+if (!$needAutoSync && !$canCompress) {
+    // Hosting tanpa exec/FFmpeg (mis. InfinityFree): kirim response biasa dan selesai.
+    echo $responseJson;
+    exit;
+}
+
+// STEP 4: Flush response ke browser terlebih dahulu, lalu lanjutkan proses berat di belakang
 ignore_user_abort(true);
 set_time_limit(0);
 @ini_set('zlib.output_compression', '0');
@@ -198,15 +241,18 @@ if (function_exists('fastcgi_finish_request')) {
 }
 
 // STEP 5: Kompresi FFmpeg di background (hasil → *_cmp.mp4, file mentah dihapus setelah sukses)
-startBackgroundCompression($finalFilePath, $qualityMode);
+if ($canCompress) {
+    startBackgroundCompression($finalFilePath, $qualityMode);
+}
 
 // STEP 6: Auto Sync ke Google Sheets & Drive jika diaktifkan
-try {
-    require_once __DIR__ . '/../config/google_sync.php';
-    $syncConfig = getGoogleSyncConfig();
-    if (!empty($syncConfig['auto_sync']) && !empty($syncConfig['gas_webapp_url'])) {
+if ($needAutoSync) {
+    try {
         sendPackingToGoogle($insertId);
+    } catch (Throwable $syncErr) {
+        error_log("Auto sync failed for packing #{$insertId}: " . $syncErr->getMessage());
     }
-} catch (Throwable $syncErr) {
-    error_log("Auto sync failed for packing #{$insertId}: " . $syncErr->getMessage());
 }
+
+// Bersih-bersih sesekali: folder chunk yang terbengkalai
+if (random_int(1, 20) === 1) { cleanupStaleChunkDirs(); }

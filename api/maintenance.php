@@ -192,6 +192,10 @@ try {
             }
         }
 
+        // Folder potongan upload (chunked) yang terbengkalai > 24 jam
+        require_once __DIR__ . '/../config/video.php';
+        $cleanedCount += cleanupStaleChunkDirs();
+
         echo json_encode([
             'success' => true,
             'message' => "Pembersihan selesai! {$cleanedCount} file tidak valid / sampah berhasil dihapus.",

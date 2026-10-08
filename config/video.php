@@ -52,6 +52,86 @@ function resolvePackingVideo(array &$row, ?PDO $db = null): string {
 }
 
 /**
+ * Folder sementara untuk upload bertahap (chunked). Mengembalikan path folder atau null bila gagal.
+ */
+function chunkUploadDir(string $uploadId, bool $create = true): ?string {
+    if (!preg_match('/^[A-Za-z0-9_-]{8,64}$/', $uploadId)) return null;
+    $base = __DIR__ . '/../uploads/tmp';
+    if (!is_dir($base)) {
+        @mkdir($base, 0777, true);
+    }
+    // Jangan biarkan potongan video bisa diakses langsung lewat web
+    if (is_dir($base) && !is_file($base . '/.htaccess')) {
+        @file_put_contents($base . '/.htaccess', "Require all denied\n<IfModule !mod_authz_core.c>\nDeny from all\n</IfModule>\n");
+    }
+    $dir = $base . '/' . $uploadId;
+    if (!is_dir($dir)) {
+        if (!$create) return null;
+        @mkdir($dir, 0777, true);
+    }
+    $real = realpath($dir);
+    return ($real && is_dir($real) && is_writable($real)) ? $real : null;
+}
+
+/**
+ * Menggabungkan semua chunk menjadi satu file tujuan. Mengembalikan null jika sukses, atau pesan error.
+ */
+function assembleChunks(string $uploadId, int $totalChunks, string $destPath): ?string {
+    $dir = chunkUploadDir($uploadId, false);
+    if (!$dir) return 'Potongan upload tidak ditemukan di server (upload_id tidak dikenal).';
+
+    $missing = [];
+    for ($i = 0; $i < $totalChunks; $i++) {
+        if (!is_file($dir . DIRECTORY_SEPARATOR . $i . '.part')) $missing[] = $i;
+    }
+    if ($missing) {
+        return 'Potongan video belum lengkap (hilang: ' . implode(',', array_slice($missing, 0, 10)) . (count($missing) > 10 ? ',…' : '') . ').';
+    }
+
+    $out = @fopen($destPath, 'wb');
+    if (!$out) return 'Gagal membuat file video tujuan (cek izin folder uploads/videos).';
+    for ($i = 0; $i < $totalChunks; $i++) {
+        $in = @fopen($dir . DIRECTORY_SEPARATOR . $i . '.part', 'rb');
+        if (!$in) { fclose($out); @unlink($destPath); return "Gagal membaca potongan #{$i}."; }
+        while (!feof($in)) {
+            $buf = fread($in, 1048576);
+            if ($buf === false) break;
+            if (fwrite($out, $buf) === false) {
+                fclose($in); fclose($out); @unlink($destPath);
+                return 'Gagal menulis file video (disk penuh / kuota habis?).';
+            }
+        }
+        fclose($in);
+    }
+    fclose($out);
+    removeChunkDir($uploadId);
+    return null;
+}
+
+function removeChunkDir(string $uploadId): void {
+    $dir = chunkUploadDir($uploadId, false);
+    if (!$dir) return;
+    foreach (glob($dir . DIRECTORY_SEPARATOR . '*') ?: [] as $f) { @unlink($f); }
+    @rmdir($dir);
+}
+
+/**
+ * Bersihkan folder chunk yang terbengkalai (> 24 jam). Dipanggil sesekali.
+ */
+function cleanupStaleChunkDirs(int $maxAgeSec = 86400): int {
+    $base = realpath(__DIR__ . '/../uploads/tmp');
+    if (!$base) return 0;
+    $n = 0;
+    foreach (glob($base . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR) ?: [] as $d) {
+        if ((time() - (int)@filemtime($d)) > $maxAgeSec) {
+            foreach (glob($d . DIRECTORY_SEPARATOR . '*') ?: [] as $f) { @unlink($f); }
+            if (@rmdir($d)) $n++;
+        }
+    }
+    return $n;
+}
+
+/**
  * Semua varian file yang terkait sebuah video (mentah, kompresi, temp) — untuk dihapus bersama.
  */
 function packingVideoVariants(string $filename): array {
@@ -74,10 +154,31 @@ function packingVideoVariants(string $filename): array {
  * Setelah sukses: hasil dipindah ke *_cmp.mp4 dan file mentah dihapus.
  * Jika gagal: file mentah tetap utuh.
  */
-function startBackgroundCompression(string $rawPath, string $qualityMode = 'hd'): bool {
+/**
+ * Apakah server ini bisa menjalankan FFmpeg di background?
+ * (exec/popen tidak dinonaktifkan DAN binary ffmpeg tersedia)
+ */
+function canRunFfmpeg(): bool {
+    static $cached = null;
+    if ($cached !== null) return $cached;
+
     $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
-    $canExec = function_exists('popen') && function_exists('exec') && !in_array('exec', $disabled, true) && !in_array('popen', $disabled, true);
-    if (!$canExec || !is_file($rawPath)) return false;
+    $canExec = function_exists('popen') && function_exists('exec')
+            && !in_array('exec', $disabled, true) && !in_array('popen', $disabled, true);
+    if (!$canExec) return $cached = false;
+
+    $isWindows = (PHP_OS_FAMILY === 'Windows');
+    $bundled = realpath(__DIR__ . '/../bin/' . ($isWindows ? 'ffmpeg.exe' : 'ffmpeg'));
+    if ($bundled) return $cached = true;
+
+    // Cari di PATH
+    $out = [];
+    @exec(($isWindows ? 'where ffmpeg' : 'command -v ffmpeg') . ' 2>' . ($isWindows ? 'NUL' : '/dev/null'), $out, $code);
+    return $cached = ($code === 0 && !empty($out));
+}
+
+function startBackgroundCompression(string $rawPath, string $qualityMode = 'hd'): bool {
+    if (!canRunFfmpeg() || !is_file($rawPath)) return false;
 
     if ($qualityMode === 'ultra') {
         $crf = '20'; $audio = '128k';

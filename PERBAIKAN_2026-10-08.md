@@ -36,3 +36,12 @@
 `.htaccess`, `admin.php`, `login.php`, `packing.php`, `download.php`, `api/save_packing.php`, `api/delete_packing.php`, `api/get_packings.php`, `api/sync_google.php`, `api/db_manager.php`, `api/maintenance.php`, `config/database.php`, `config/google_sync.php`, `config/video.php` (baru), `assets/js/admin.js`, `assets/js/packing.js`, `assets/css/style.css`.
 
 Backup versi lama: folder `_backup_2026-10-08/`.
+
+---
+
+## Update 2 — upload bertahap untuk hosting dengan batas 10 MB (InfinityFree)
+- **Penyebab error submit di produksi**: InfinityFree membatasi `post_max_size`/`upload_max_filesize` **10 MB per request** dan tidak bisa dinaikkan lewat `.htaccess`. Video HD > ±30 detik langsung ditolak server.
+- **Solusi**: video > 4 MB kini dikirim **bertahap (chunk 4 MB)** ke `api/upload_chunk.php` (potongan disimpan di `uploads/tmp/<upload_id>/`, diblokir dari akses web), lalu dirakit oleh `api/save_packing.php`. Tiap potongan di-retry 3x; progres tampil di card riwayat ("mengupload 3/12 (25%)").
+- `save_packing.php` hanya memakai mode *flush-lalu-lanjut* (Content-Length + Connection: close) bila memang ada FFmpeg/auto-sync; di hosting tanpa `exec` response dikirim normal.
+- `config/video.php`: `canRunFfmpeg()`, `chunkUploadDir()`, `assembleChunks()`, `cleanupStaleChunkDirs()` (folder chunk terbengkalai > 24 jam dibersihkan otomatis / lewat menu Bersihkan File Sampah).
+- File baru: `api/upload_chunk.php`. File diubah: `api/save_packing.php`, `api/maintenance.php`, `config/video.php`, `assets/js/packing.js`.

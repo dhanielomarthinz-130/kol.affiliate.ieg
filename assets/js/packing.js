@@ -1,6 +1,9 @@
 // assets/js/packing.js
 
 class PackingStation {
+    // Ukuran potongan upload (harus < post_max_size/upload_max_filesize server; InfinityFree = 10 MB)
+    static CHUNK_SIZE = 4 * 1024 * 1024;
+
     constructor() {
         this.videoElement = document.getElementById('cameraFeed');
         this.cameraSelect = document.getElementById('cameraSelect');
@@ -683,12 +686,46 @@ class PackingStation {
         let result = null;
         let networkError = null;
         try {
-            const response = await fetch('api/save_packing.php', {
-                method: 'POST',
-                body: formData,
-                cache: 'no-store'
-            });
-            result = await this._parseJsonResponse(response);
+            const videoBlob = formData.get('video');
+            const useChunks = videoBlob && typeof videoBlob.size === 'number' && videoBlob.size > PackingStation.CHUNK_SIZE;
+
+            if (useChunks) {
+                // ── Upload bertahap: hosting seperti InfinityFree membatasi 10 MB per request ──
+                const uploadId = this._makeUploadId();
+                const total = Math.ceil(videoBlob.size / PackingStation.CHUNK_SIZE);
+                for (let i = 0; i < total; i++) {
+                    const start = i * PackingStation.CHUNK_SIZE;
+                    const piece = videoBlob.slice(start, Math.min(start + PackingStation.CHUNK_SIZE, videoBlob.size));
+                    const pct = Math.round(((i) / total) * 100);
+                    setCardState('upload-pending', `⬆ mengupload ${i + 1}/${total} (${pct}%)` + (attempt > 1 ? ` • ulang ${attempt}` : ''));
+                    const chunkRes = await this._uploadOneChunk(uploadId, i, total, piece, resi);
+                    if (!chunkRes.success) {
+                        result = chunkRes; // error chunk → tangani seperti gagal upload biasa
+                        break;
+                    }
+                }
+
+                if (!result) {
+                    setCardState('upload-pending', '⬆ menyimpan (100%)...');
+                    const finalFd = new FormData();
+                    for (const [k, v] of formData.entries()) {
+                        if (k !== 'video') finalFd.append(k, v);
+                    }
+                    finalFd.append('upload_id', uploadId);
+                    finalFd.append('total_chunks', String(total));
+                    finalFd.append('video_type', videoBlob.type || '');
+                    finalFd.append('video_ext', /mp4/i.test(videoBlob.type || '') ? 'mp4' : 'webm');
+                    const response = await fetch('api/save_packing.php', { method: 'POST', body: finalFd, cache: 'no-store' });
+                    result = await this._parseJsonResponse(response);
+                }
+            } else {
+                const response = await fetch('api/save_packing.php', {
+                    method: 'POST',
+                    body: formData,
+                    cache: 'no-store'
+                });
+                result = await this._parseJsonResponse(response);
+            }
         } catch (err) {
             console.error('Background upload error:', err);
             networkError = err;
@@ -765,6 +802,35 @@ class PackingStation {
             setTimeout(() => { window.location.href = 'login'; }, 3000);
         }
         // Blob URL & _pendingResi sengaja TIDAK dilepas: video masih bisa diputar & diupload ulang.
+    }
+
+    // Upload satu potongan video dengan retry (3x) — mengembalikan JSON server
+    async _uploadOneChunk(uploadId, index, total, piece, resi) {
+        let last = null;
+        for (let tryNo = 1; tryNo <= 3; tryNo++) {
+            try {
+                const fd = new FormData();
+                fd.append('upload_id', uploadId);
+                fd.append('chunk_index', String(index));
+                fd.append('total_chunks', String(total));
+                fd.append('resi_no', resi);
+                fd.append('chunk', piece, `chunk_${index}.bin`);
+                const res = await fetch('api/upload_chunk.php', { method: 'POST', body: fd, cache: 'no-store' });
+                last = await this._parseJsonResponse(res);
+                if (last.success) return last;
+                // Error "pasti" (401 sesi / 413 chunk terlalu besar) tidak perlu diulang
+                if (res.status === 401 || res.status === 413) return last;
+            } catch (e) {
+                last = { success: false, message: 'Jaringan terputus saat mengirim potongan ' + (index + 1) + '/' + total + '.' , _network: true };
+            }
+            await new Promise(r => setTimeout(r, 1200 * tryNo));
+        }
+        return last || { success: false, message: 'Gagal mengirim potongan video.' };
+    }
+
+    _makeUploadId() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '');
+        return 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
     }
 
     _adjustTodayCounter(delta) {
