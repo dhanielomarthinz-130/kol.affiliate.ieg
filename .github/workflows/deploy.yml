@@ -13,6 +13,36 @@ jobs:
       - name: 🚚 Checkout Code
         uses: actions/checkout@v4
 
+      - name: 🧹 Auto-Free Remote Disk Quota
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          python -c "
+          import ftplib, os
+          try:
+              server = os.environ.get('FTP_SERVER')
+              user = os.environ.get('FTP_USERNAME')
+              pwd = os.environ.get('FTP_PASSWORD')
+              ftp = ftplib.FTP(server, timeout=15)
+              ftp.login(user, pwd)
+              ftp.pasv(True)
+              vids_dir = 'iegkolaffiliate.great-site.net/htdocs/uploads/videos'
+              files = ftp.nlst(vids_dir)
+              for f in files:
+                  b = os.path.basename(f)
+                  if b not in ['.', '..', '.gitkeep']:
+                      try:
+                          ftp.delete(f)
+                      except Exception:
+                          pass
+              ftp.quit()
+              print('Remote video cleanup completed.')
+          except Exception as e:
+              print('FTP cleanup warning:', e)
+          "
+
       - name: 📂 Sync to InfinityFree FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
