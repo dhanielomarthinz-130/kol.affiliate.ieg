@@ -9,7 +9,8 @@ Thumbs.db
 .vscode/
 scratch/
 _backup_*/
-*.sql
+!iegkolaffiliate.sql
+!database/iegkolaffiliate.sql
 uploads/tmp/*
 !uploads/tmp/.htaccess
 assets/image/*_original_square.*
