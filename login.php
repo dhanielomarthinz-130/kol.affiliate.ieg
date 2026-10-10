@@ -44,111 +44,210 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+// Resilient base path resolution (supports domain root, subdirectories like /kol.ieg/, ngrok tunnels, etc.)
+$scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+$assetBase = ($scriptDir !== '') ? ($scriptDir . '/') : '/';
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <base href="<?= htmlspecialchars($assetBase) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login — IEG KOL</title>
-    <meta name="description" content="Sistem perekaman dan packing IEG KOL Affiliate.">
-    <link rel="icon" type="image/svg+xml" href="assets/image/favicon.svg">
-    <link rel="icon" type="image/png" href="assets/image/favicon.png">
-    <link rel="shortcut icon" href="favicon.ico">
+    <title>Login — IEG Packaging KOL Affiliate</title>
+    <meta name="description" content="Sistem Packaging dan Perekaman CCTV Paket KOL Affiliate - Inovasi Eka Gemilang">
+    <link rel="icon" type="image/svg+xml" href="<?= $assetBase ?>assets/image/favicon.svg">
+    <link rel="icon" type="image/png" href="<?= $assetBase ?>assets/image/favicon.png">
+    <link rel="shortcut icon" href="<?= $assetBase ?>favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>">
+    <link rel="stylesheet" href="<?= $assetBase ?>assets/css/style.css?v=<?= file_exists(__DIR__ . '/assets/css/style.css') ? filemtime(__DIR__ . '/assets/css/style.css') : 1 ?>">
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         :root {
-            --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --primary-light: #eff6ff;
+            --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
+            --primary-blue: #2563eb;
+            --primary-indigo: #4f46e5;
+            --primary-dark: #1d4ed8;
             --text-dark: #0f172a;
             --text-muted: #64748b;
             --text-dim: #94a3b8;
-            --border-ui: #e2e8f0;
-            --card-glass: rgba(255, 255, 255, 0.94);
+            --border-light: #e2e8f0;
         }
 
-        body.login-body {
-            font-family: var(--font);
+        body.login-page {
+            font-family: var(--font-main);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1.25rem;
-            background-color: #f8fafc;
-            background-image:
-                radial-gradient(ellipse 80% 60% at 50% -12%, rgba(219, 234, 254, 0.8) 0%, transparent 60%),
-                radial-gradient(ellipse 65% 55% at 90% 95%, rgba(224, 231, 255, 0.7) 0%, transparent 55%),
-                radial-gradient(ellipse 55% 45% at 10% 90%, rgba(207, 250, 254, 0.5) 0%, transparent 50%),
-                radial-gradient(rgba(148, 163, 184, 0.35) 1.2px, transparent 1.2px);
-            background-size: 100% 100%, 100% 100%, 100% 100%, 26px 26px;
+            justify-content: space-between;
+            color: #ffffff;
             position: relative;
             overflow-x: hidden;
-            color: var(--text-dark);
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 38%, #3b82f6 72%, #4f46e5 100%);
         }
 
-        /* Ambient Glowing Color Orbs */
-        .login-ambient-orb {
+        /* Ambient subtle radial glow highlights */
+        .ambient-glow {
             position: fixed;
             border-radius: 50%;
-            filter: blur(95px);
             pointer-events: none;
+            filter: blur(100px);
             z-index: 0;
-            animation: orbPulse 16s ease-in-out infinite alternate;
         }
-        .orb-top {
-            width: 480px;
-            height: 480px;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.22) 0%, rgba(99, 102, 241, 0.18) 100%);
+
+        .ambient-glow-1 {
+            width: 550px;
+            height: 550px;
+            background: rgba(96, 165, 250, 0.28);
             top: -120px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        .orb-bottom-right {
-            width: 360px;
-            height: 360px;
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(217, 70, 239, 0.12) 100%);
-            bottom: -60px;
-            right: -60px;
-            animation-delay: -6s;
-        }
-        .orb-bottom-left {
-            width: 340px;
-            height: 340px;
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.18) 0%, rgba(16, 185, 129, 0.14) 100%);
-            bottom: -70px;
-            left: -60px;
-            animation-delay: -11s;
+            left: -100px;
         }
 
-        @keyframes orbPulse {
-            0% { transform: scale(1) translateY(0); }
-            50% { transform: scale(1.08) translateY(-25px); }
-            100% { transform: scale(0.95) translateY(15px); }
+        .ambient-glow-2 {
+            width: 500px;
+            height: 500px;
+            background: rgba(129, 140, 248, 0.25);
+            bottom: -100px;
+            right: -80px;
         }
 
-        /* Login Card Wrapper */
-        .login-wrapper {
+        .ambient-glow-3 {
+            width: 400px;
+            height: 400px;
+            background: rgba(37, 99, 235, 0.2);
+            bottom: 20%;
+            left: 30%;
+        }
+
+        /* Main Container Layout */
+        .login-layout-container {
             position: relative;
             z-index: 10;
             width: 100%;
-            max-width: 440px;
-            animation: cardEntrance 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 3rem 4rem 2rem;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4.5rem;
         }
 
-        @keyframes cardEntrance {
+        /* Left Hero Branding Section */
+        .login-hero-section {
+            flex: 1.15;
+            max-width: 650px;
+            animation: fadeInHero 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @keyframes fadeInHero {
             from {
                 opacity: 0;
-                transform: translateY(22px) scale(0.98);
+                transform: translateX(-24px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .hero-title {
+            font-size: clamp(2.5rem, 4.2vw, 3.6rem);
+            font-weight: 800;
+            line-height: 1.14;
+            letter-spacing: -0.035em;
+            color: #ffffff;
+            margin-bottom: 1.35rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .hero-desc {
+            font-size: 1.05rem;
+            line-height: 1.65;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 400;
+            margin-bottom: 2.5rem;
+            max-width: 560px;
+        }
+
+        /* 2x2 Feature Pills Grid */
+        .hero-feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.15rem;
+            max-width: 540px;
+        }
+
+        .feature-pill-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 13px 20px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 14px;
+            box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+            transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
+        }
+
+        .feature-pill-card:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.38);
+            box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.16);
+        }
+
+        .feature-pill-icon-box {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            flex-shrink: 0;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4);
+        }
+
+        .feature-pill-icon-box .material-symbols-outlined {
+            font-size: 20px;
+        }
+
+        .feature-pill-text {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+        }
+
+        /* Right Column: Clean White Login Card */
+        .login-card-wrapper {
+            flex: 0 0 460px;
+            width: 100%;
+            max-width: 460px;
+            animation: fadeInCard 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+        }
+
+        @keyframes fadeInCard {
+            from {
+                opacity: 0;
+                transform: translateY(24px) scale(0.98);
             }
             to {
                 opacity: 1;
@@ -156,115 +255,335 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        .login-glass-card {
-            background: var(--card-glass);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.95);
+        .login-white-card {
+            background: #ffffff;
             border-radius: 28px;
-            padding: 2.5rem 2.25rem 2.25rem;
+            padding: 2.75rem 2.5rem 2.5rem;
             box-shadow:
-                0 25px 60px -15px rgba(15, 23, 42, 0.08),
-                0 0 0 1px rgba(226, 232, 240, 0.8),
-                inset 0 1.5px 2px rgba(255, 255, 255, 1);
+                0 30px 65px -15px rgba(15, 23, 42, 0.24),
+                0 0 0 1px rgba(255, 255, 255, 0.95);
             position: relative;
-            overflow: hidden;
-            transition: all 0.3s ease;
+            color: var(--text-dark);
         }
 
-        /* Brand Header */
-        .login-brand-header {
+        /* Top Logo */
+        .card-logo-container {
             text-align: center;
-            margin-bottom: 1.75rem;
-        }
-
-        .login-logo-container {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            margin-bottom: 1rem;
-        }
-
-        .login-logo-badge {
-            width: 74px;
-            height: 74px;
-            background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
-            border-radius: 22px;
-            padding: 10px;
+            margin-bottom: 1.6rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1.5px solid rgba(226, 232, 240, 0.9);
-            box-shadow:
-                0 12px 28px -6px rgba(37, 99, 235, 0.15),
-                0 2px 6px rgba(15, 23, 42, 0.04),
-                inset 0 1px 1px #ffffff;
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            padding: 0 0.5rem;
         }
 
-        .login-glass-card:hover .login-logo-badge {
-            transform: scale(1.04) rotate(-1deg);
-        }
-
-        .login-logo-img {
-            max-width: 100%;
-            max-height: 100%;
+        .card-brand-logo {
+            width: 100%;
+            max-width: 280px;
+            height: auto;
+            max-height: 95px;
             object-fit: contain;
-            filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.12));
+            display: block;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.04));
         }
 
-        .login-brand-title {
-            font-size: 1.55rem;
+        .card-heading-title {
+            text-align: center;
+            font-size: 1.45rem;
             font-weight: 800;
             color: var(--text-dark);
-            letter-spacing: -0.03em;
-            line-height: 1.2;
-            margin-bottom: 3px;
+            letter-spacing: -0.025em;
+            margin-bottom: 5px;
         }
 
-        .login-brand-sub {
-            font-size: 0.82rem;
+        .card-heading-desc {
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 500;
             color: var(--text-muted);
-            font-weight: 600;
-            letter-spacing: 0.01em;
+            margin-bottom: 1.5rem;
         }
 
-        .login-badge-chip {
+        /* Segmented Method Switcher */
+        .method-segmented-tabs {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 4px;
+            display: flex;
+            gap: 6px;
+            margin-bottom: 1.6rem;
+        }
+
+        .method-tab-btn {
+            flex: 1 1 0;
+            height: 44px;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            margin-top: 10px;
-            background: #eff6ff;
-            border: 1px solid #dbeafe;
-            border-radius: 9999px;
+            justify-content: center;
+            gap: 7px;
+            border: none;
+            background: transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #64748b;
+            font-family: var(--font-main);
+            font-size: 0.86rem;
+            font-weight: 600;
+            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
+        }
+
+        .method-tab-btn:focus {
+            outline: none;
+        }
+
+        .method-tab-btn .tab-symbol {
+            font-size: 19px;
+            color: inherit;
+        }
+
+        .method-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 6px;
+            letter-spacing: 0.02em;
+            transition: all 0.2s ease;
+        }
+
+        .badge-inactive {
+            background: #e2e8f0;
+            color: #64748b;
+        }
+
+        .method-tab-btn.active {
+            background: #ffffff;
+            color: #1e40af;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+        }
+
+        .method-tab-btn.active .tab-symbol {
             color: #2563eb;
-            font-size: 0.7rem;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
         }
 
-        .login-badge-chip .chip-dot {
-            width: 6px;
-            height: 6px;
+        .method-tab-btn.active .method-badge {
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #dbeafe;
+        }
+
+        /* Notched / Floating Outlined Input Fields */
+        .input-notch-group {
+            position: relative;
+            margin-bottom: 1.35rem;
+        }
+
+        .input-notch-label {
+            position: absolute;
+            top: -9px;
+            left: 14px;
+            background: #ffffff;
+            padding: 0 6px;
+            font-size: 0.73rem;
+            font-weight: 700;
+            color: #64748b;
+            letter-spacing: 0.01em;
+            z-index: 2;
+            transition: color 0.2s ease;
+        }
+
+        .input-notch-group:focus-within .input-notch-label {
+            color: #2563eb;
+        }
+
+        .input-notch-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 12px;
+            height: 50px;
+            transition: all 0.2s ease;
+        }
+
+        .input-notch-group:focus-within .input-notch-box {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        .input-notch-icon {
+            position: absolute;
+            left: 14px;
+            color: #94a3b8;
+            font-size: 20px;
+            pointer-events: none;
+            transition: color 0.2s ease;
+        }
+
+        .input-notch-group:focus-within .input-notch-icon {
+            color: #2563eb;
+        }
+
+        .input-notch-field {
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            padding: 0 14px 0 44px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            font-family: var(--font-main);
+            color: var(--text-dark);
+        }
+
+        .input-notch-field::placeholder {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .input-pwd-toggle {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .input-pwd-toggle:hover {
+            color: var(--text-dark);
+            background: #f1f5f9;
+        }
+
+        /* Submit Button (Gradient Purple-Blue) */
+        .btn-submit-action {
+            width: 100%;
+            height: 50px;
+            margin-top: 1.35rem;
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.94rem;
+            font-weight: 700;
+            font-family: var(--font-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: -0.01em;
+            box-shadow: 0 10px 24px -4px rgba(79, 70, 229, 0.42);
+            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-submit-action:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px -5px rgba(79, 70, 229, 0.52);
+        }
+
+        .btn-submit-action:active {
+            transform: translateY(0);
+        }
+
+        .btn-submit-action:disabled {
+            opacity: 0.85;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* PIN Mode Elements */
+        .pin-dots-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin: 14px auto 18px;
+            padding: 6px 0;
+        }
+
+        .pin-dot-item {
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
-            background: #2563eb;
-            animation: chipPulse 1.8s infinite;
+            border: 2px solid #cbd5e1;
+            background: #f8fafc;
+            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        @keyframes chipPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.85); }
+        .pin-dot-item.active {
+            background: #4f46e5;
+            border-color: #4f46e5;
+            box-shadow: 0 0 14px rgba(79, 70, 229, 0.55);
+            transform: scale(1.22);
         }
 
-        /* Error Alert */
-        .login-alert-error {
+        .pin-keyboard-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 0.5rem;
+        }
+
+        .pin-key-btn {
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            color: var(--text-dark);
+            font-size: 1.25rem;
+            font-weight: 700;
+            font-family: var(--font-main);
+            height: 52px;
+            border-radius: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03);
+        }
+
+        .pin-key-btn:focus {
+            outline: none;
+        }
+
+        .pin-key-btn:hover {
+            background: #eef2ff;
+            border-color: #c7d2fe;
+            color: #4338ca;
+            transform: translateY(-1.5px);
+            box-shadow: 0 6px 14px rgba(79, 70, 229, 0.14);
+        }
+
+        .pin-key-btn:active {
+            transform: translateY(1px) scale(0.97);
+            background: #e0e7ff;
+        }
+
+        .pin-key-btn.key-blank {
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* Alerts & Notices */
+        .login-error-alert {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 0.8rem 1rem;
+            padding: 0.85rem 1rem;
             border-radius: 12px;
             background: #fef2f2;
             border: 1px solid #fecaca;
@@ -281,449 +600,350 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             40%, 80% { transform: translateX(4px); }
         }
 
-        /* Mode Switcher Tabs */
-        .login-nav-tabs {
+        /* Page Footer */
+        .login-page-footer {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 1.5rem 4rem 2rem;
             display: flex;
-            background: #f1f5f9;
-            padding: 5px;
-            border-radius: 16px;
-            margin-bottom: 1.5rem;
-            border: 1px solid #e2e8f0;
-            gap: 6px;
-        }
-
-        .login-tab-btn {
-            flex: 1 1 0;
-            min-width: 0;
-            height: 42px;
-            display: inline-flex;
             align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 0 14px;
-            border: none;
-            background: transparent;
-            color: #64748b;
-            font-size: 0.85rem;
-            font-weight: 600;
-            font-family: var(--font);
-            border-radius: 12px;
-            cursor: pointer;
-            white-space: nowrap;
-            user-select: none;
-            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            justify-content: space-between;
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.82rem;
+            font-weight: 500;
         }
 
-        .login-tab-btn:focus { outline: none; }
-
-        .login-tab-btn:hover {
-            color: var(--text-dark);
-            background: rgba(255, 255, 255, 0.65);
-        }
-
-        .login-tab-btn.active {
-            background: #ffffff;
-            color: #1d4ed8;
-            font-weight: 700;
-            border: 1px solid #dbeafe;
-            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12), 0 1px 3px rgba(15, 23, 42, 0.04);
-        }
-
-        .login-tab-btn .tab-ico {
-            font-size: 18px;
-            display: inline-flex;
-        }
-
-        .login-tab-btn.active .tab-ico {
-            color: #2563eb;
-        }
-
-        /* Form Controls */
-        .login-form-group {
-            margin-bottom: 1.2rem;
-        }
-
-        .login-form-label {
-            display: block;
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: #334155;
-            margin-bottom: 7px;
+        .footer-left {
             letter-spacing: 0.01em;
         }
 
-        .login-input-wrap {
+        .footer-right {
+            letter-spacing: 0.01em;
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 1080px) {
+            .login-layout-container {
+                padding: 2.5rem 2rem 1.5rem;
+                gap: 2.5rem;
+            }
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            .login-page-footer {
+                padding: 1.25rem 2rem 1.5rem;
+            }
+        }
+
+        @media (max-width: 900px) {
+            body.login-page {
+                justify-content: flex-start;
+            }
+            .login-layout-container {
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 2rem 1.25rem 1rem;
+                gap: 2.25rem;
+            }
+            .login-hero-section {
+                text-align: center;
+                max-width: 500px;
+            }
+            .hero-desc {
+                margin: 0 auto 2rem;
+            }
+            .hero-feature-grid {
+                margin: 0 auto;
+            }
+            .login-card-wrapper {
+                max-width: 440px;
+            }
+            .login-page-footer {
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+                padding: 1rem 1.25rem 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-feature-grid {
+                grid-template-columns: 1fr;
+            }
+            .login-white-card {
+                padding: 2rem 1.5rem 1.75rem;
+                border-radius: 22px;
+            }
+            .feature-pill-card {
+                padding: 10px 14px;
+            }
+        }
+        /* Inline Resilient Loading Spinner */
+        .premium-balls-spinner {
             position: relative;
-            display: flex;
-            align-items: center;
+            width: 44px;
+            height: 44px;
+            margin: 0 auto;
+            animation: spinRotate 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
         }
-
-        .login-input-icon {
+        .premium-balls-spinner.spinner-xs {
+            transform: scale(0.5);
+            margin: 0;
+        }
+        .spinner-ball {
             position: absolute;
-            left: 14px;
-            color: #94a3b8;
-            font-size: 20px;
-            pointer-events: none;
-            transition: color 0.2s ease;
-        }
-
-        .login-form-input {
-            width: 100%;
-            height: 48px;
-            padding: 0 1rem 0 2.85rem;
-            background: #f8fafc;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            font-family: var(--font);
-            color: var(--text-dark);
-            outline: none;
-            transition: all 0.2s ease;
-        }
-
-        .login-form-input::placeholder {
-            color: #94a3b8;
-        }
-
-        .login-form-input:focus {
-            background: #ffffff;
-            border-color: #2563eb;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
-        }
-
-        .login-input-wrap:focus-within .login-input-icon {
-            color: #2563eb;
-        }
-
-        .login-eye-toggle {
-            position: absolute;
-            right: 12px;
-            background: none;
-            border: none;
-            color: #94a3b8;
-            cursor: pointer;
-            padding: 6px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.15s ease;
-        }
-
-        .login-eye-toggle:hover {
-            color: #334155;
-            background: #f1f5f9;
-        }
-
-        /* Submit Button */
-        .login-submit-btn {
-            width: 100%;
-            height: 48px;
-            margin-top: 1.25rem;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: #ffffff;
-            border: none;
-            border-radius: 12px;
-            font-size: 0.92rem;
-            font-weight: 700;
-            font-family: var(--font);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 9px;
-            letter-spacing: -0.01em;
-            box-shadow: 0 10px 24px -4px rgba(37, 99, 235, 0.4);
-            white-space: nowrap;
-            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .login-submit-btn:hover {
-            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 14px 28px -5px rgba(37, 99, 235, 0.5);
-        }
-
-        .login-submit-btn:active {
-            transform: translateY(0);
-        }
-
-        .login-submit-btn:disabled {
-            opacity: 0.85;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* PIN Mode Elements */
-        .pin-dots-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            margin: 14px auto 18px;
-            padding: 6px 0;
-        }
-
-        .pin-dot-view {
-            width: 18px;
-            height: 18px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            border: 2px solid #cbd5e1;
-            background: #f8fafc;
-            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            top: 50%;
+            left: 50%;
+            margin-top: -5px;
+            margin-left: -5px;
         }
-
-        .pin-dot-view.filled {
-            background: #2563eb;
-            border-color: #2563eb;
-            box-shadow: 0 0 14px rgba(37, 99, 235, 0.55);
-            transform: scale(1.22);
-        }
-
-        .login-numpad {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 0.5rem;
-        }
-
-        .login-pin-key {
-            background: #ffffff;
-            border: 1.5px solid #e2e8f0;
-            color: var(--text-dark);
-            font-size: 1.25rem;
-            font-weight: 700;
-            font-family: var(--font);
-            height: 52px;
-            border-radius: 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.15s ease;
-            user-select: none;
-            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03);
-        }
-
-        .login-pin-key:focus { outline: none; }
-
-        .login-pin-key:hover {
-            background: #eff6ff;
-            border-color: #bfdbfe;
-            color: #1d4ed8;
-            transform: translateY(-1.5px);
-            box-shadow: 0 6px 14px rgba(37, 99, 235, 0.12);
-        }
-
-        .login-pin-key:active {
-            transform: translateY(1px) scale(0.97);
-            background: #dbeafe;
-        }
-
-        .login-pin-key.key-empty {
-            background: transparent;
-            border-color: transparent;
-            box-shadow: none;
-            cursor: default;
-            pointer-events: none;
-        }
-
-        /* Footer */
-        .login-footer {
-            margin-top: 1.5rem;
-            text-align: center;
-            position: relative;
-            z-index: 10;
-        }
-
-        .login-footer-security {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.75rem;
-            color: #64748b;
-            font-weight: 600;
-            background: rgba(255, 255, 255, 0.7);
-            padding: 4px 12px;
-            border-radius: 9999px;
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            margin-bottom: 6px;
-        }
-
-        .login-footer-copy {
-            font-size: 0.72rem;
-            color: #94a3b8;
-            font-weight: 500;
-        }
+        .spinner-ball.ball-1 { background: #60a5fa; animation: bOrb1 2s ease-in-out infinite; }
+        .spinner-ball.ball-2 { background: #f87171; animation: bOrb2 2s ease-in-out infinite; }
+        .spinner-ball.ball-3 { background: #fbbf24; animation: bOrb3 2s ease-in-out infinite; }
+        .spinner-ball.ball-4 { background: #34d399; animation: bOrb4 2s ease-in-out infinite; }
+        .spinner-ball.ball-5 { background: #a78bfa; animation: bOrb5 2s ease-in-out infinite; }
+        .spinner-ball.ball-6 { background: #38bdf8; animation: bOrb6 2s ease-in-out infinite; }
+        @keyframes bOrb1 { 0%, 100% { transform: rotate(0deg) translate(18px) rotate(0deg); } 50% { transform: rotate(0deg) translate(11px) rotate(0deg); } }
+        @keyframes bOrb2 { 0%, 100% { transform: rotate(60deg) translate(18px) rotate(-60deg); } 50% { transform: rotate(60deg) translate(11px) rotate(-60deg); } }
+        @keyframes bOrb3 { 0%, 100% { transform: rotate(120deg) translate(18px) rotate(-120deg); } 50% { transform: rotate(120deg) translate(11px) rotate(-120deg); } }
+        @keyframes bOrb4 { 0%, 100% { transform: rotate(180deg) translate(18px) rotate(-180deg); } 50% { transform: rotate(180deg) translate(11px) rotate(-180deg); } }
+        @keyframes bOrb5 { 0%, 100% { transform: rotate(240deg) translate(18px) rotate(-240deg); } 50% { transform: rotate(240deg) translate(11px) rotate(-240deg); } }
+        @keyframes bOrb6 { 0%, 100% { transform: rotate(300deg) translate(18px) rotate(-300deg); } 50% { transform: rotate(300deg) translate(11px) rotate(-300deg); } }
+        @keyframes spinRotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="login-body">
+<body class="login-page">
 
-    <!-- Ambient Glowing Background Elements -->
-    <div class="login-ambient-orb orb-top"></div>
-    <div class="login-ambient-orb orb-bottom-right"></div>
-    <div class="login-ambient-orb orb-bottom-left"></div>
+    <!-- Ambient Glowing Background Accents -->
+    <div class="ambient-glow ambient-glow-1"></div>
+    <div class="ambient-glow ambient-glow-2"></div>
+    <div class="ambient-glow ambient-glow-3"></div>
 
-    <div class="login-wrapper">
-        <div class="login-glass-card">
+    <!-- Main Content Container -->
+    <main class="login-layout-container">
 
-            <!-- Brand Header with Logo -->
-            <div class="login-brand-header">
-                <div class="login-logo-container">
-                    <div class="login-logo-badge">
-                        <img src="assets/image/logo-IEG.png" alt="IEG Logo" class="login-logo-img">
+        <!-- Left Hero Section (Packaging Paket KOL Affiliate) -->
+        <section class="login-hero-section">
+            <h1 class="hero-title">
+                Selamat Datang<br>
+                di IEG Packaging
+            </h1>
+            <p class="hero-desc">
+                Sistem perekaman video packaging paket KOL Affiliate, integrasi scan barcode resi otomatis, kompresi video MP4 hemat, serta audit riwayat packing secara cepat dan akurat.
+            </p>
+
+            <!-- 2x2 Feature Cards -->
+            <div class="hero-feature-grid">
+                <!-- Feature 1 -->
+                <div class="feature-pill-card">
+                    <div class="feature-pill-icon-box">
+                        <span class="material-symbols-outlined">qr_code_scanner</span>
                     </div>
+                    <span class="feature-pill-text">Scan Barcode Resi</span>
                 </div>
-                <h1 class="login-brand-title">IEG Packaging</h1>
-                <div class="login-brand-sub">KOL Affiliate System</div>
+
+                <!-- Feature 2 -->
+                <div class="feature-pill-card">
+                    <div class="feature-pill-icon-box">
+                        <span class="material-symbols-outlined">inventory_2</span>
+                    </div>
+                    <span class="feature-pill-text">Proses Packing Paket</span>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="feature-pill-card">
+                    <div class="feature-pill-icon-box">
+                        <span class="material-symbols-outlined">videocam</span>
+                    </div>
+                    <span class="feature-pill-text">Perekaman Video CCTV</span>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="feature-pill-card">
+                    <div class="feature-pill-icon-box">
+                        <span class="material-symbols-outlined">video_library</span>
+                    </div>
+                    <span class="feature-pill-text">Audit &amp; Riwayat Video</span>
+                </div>
             </div>
+        </section>
 
-            <!-- Maintenance Alert Banner -->
-            <?php if ($isMaintenance): ?>
-                <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:14px; padding:12px 16px; margin-bottom:1.35rem; display:flex; align-items:center; gap:12px; color:#991b1b; font-size:0.82rem; font-weight:600; box-shadow:0 4px 12px rgba(239,68,68,0.12);">
-                    <span class="material-symbols-outlined" style="font-size:22px; color:#dc2626; flex-shrink:0;">warning</span>
-                    <span>Sistem dalam Mode Pemeliharaan. Hanya Superadmin <strong>Daniel</strong> yang dapat login.</span>
+        <!-- Right Login Card -->
+        <section class="login-card-wrapper">
+            <div class="login-white-card">
+
+                <!-- Logo Inovasi Eka Gemilang -->
+                <div class="card-logo-container">
+                    <img
+                        src="<?= $assetBase ?>assets/image/logo_text-BademdvM.jpg?v=<?= file_exists(__DIR__ . '/assets/image/logo_text-BademdvM.jpg') ? filemtime(__DIR__ . '/assets/image/logo_text-BademdvM.jpg') : time() ?>"
+                        onerror="if(this.src.indexOf('logo-IEG.png')===-1){this.src='<?= $assetBase ?>assets/image/logo-IEG.png';}"
+                        alt="Inovasi Eka Gemilang"
+                        class="card-brand-logo"
+                    >
                 </div>
-            <?php endif; ?>
 
-            <!-- Error Notification -->
-            <?php if (!empty($error)): ?>
-                <div class="login-alert-error" role="alert">
-                    <span class="material-symbols-outlined" style="font-size:20px; color:#dc2626; flex-shrink:0;">error</span>
-                    <span><?= htmlspecialchars($error) ?></span>
-                </div>
-            <?php endif; ?>
+                <!-- Card Heading -->
+                <h2 class="card-heading-title">Masuk ke Akun Anda</h2>
+                <p class="card-heading-desc">Pilih metode masuk Admin (Password) atau Operator (PIN)</p>
 
-            <!-- Mode Switcher Tabs -->
-            <div class="login-nav-tabs">
-                <button type="button" class="login-tab-btn active" id="tabStandard" onclick="switchLoginMode('standard')">
-                    <span class="material-symbols-outlined tab-ico">admin_panel_settings</span>
-                    <span>Password Admin</span>
-                </button>
-                <button type="button" class="login-tab-btn" id="tabPin" onclick="switchLoginMode('pin')">
-                    <span class="material-symbols-outlined tab-ico">pin</span>
-                    <span>PIN Operator</span>
-                </button>
-            </div>
-
-            <!-- Mode 1: Standard Password Form -->
-            <form method="POST" action="login" id="loginForm" novalidate>
-                <div class="login-form-group">
-                    <label class="login-form-label" for="inputUsername">Username Akun</label>
-                    <div class="login-input-wrap">
-                        <span class="material-symbols-outlined login-input-icon">person</span>
-                        <input
-                            type="text"
-                            name="username"
-                            id="inputUsername"
-                            class="login-form-input"
-                            placeholder="Ketik username Anda..."
-                            required
-                            autofocus
-                            autocomplete="username"
-                            value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
-                        >
+                <!-- Maintenance Alert Banner -->
+                <?php if ($isMaintenance): ?>
+                    <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:12px; padding:12px 14px; margin-bottom:1.35rem; display:flex; align-items:center; gap:10px; color:#991b1b; font-size:0.82rem; font-weight:600; box-shadow:0 4px 12px rgba(239,68,68,0.1);">
+                        <span class="material-symbols-outlined" style="font-size:22px; color:#dc2626; flex-shrink:0;">warning</span>
+                        <span>Sistem dalam Mode Pemeliharaan. Hanya Superadmin <strong>Daniel</strong> yang dapat login.</span>
                     </div>
+                <?php endif; ?>
+
+                <!-- Error Notification -->
+                <?php if (!empty($error)): ?>
+                    <div class="login-error-alert" role="alert">
+                        <span class="material-symbols-outlined" style="font-size:20px; color:#dc2626; flex-shrink:0;">error</span>
+                        <span><?= htmlspecialchars($error) ?></span>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Segmented Tabs Switcher -->
+                <div class="method-segmented-tabs" role="tablist">
+                    <button type="button" class="method-tab-btn active" id="tabAdminBtn" role="tab" aria-selected="true" onclick="switchLoginMode('standard')">
+                        <span class="material-symbols-outlined tab-symbol">person</span>
+                        <span>Admin</span>
+                        <span class="method-badge" id="adminBadge">Password</span>
+                    </button>
+                    <button type="button" class="method-tab-btn" id="tabOperatorBtn" role="tab" aria-selected="false" onclick="switchLoginMode('pin')">
+                        <span class="material-symbols-outlined tab-symbol">badge</span>
+                        <span>Operator</span>
+                        <span class="method-badge badge-inactive" id="operatorBadge">PIN</span>
+                    </button>
                 </div>
 
-                <div class="login-form-group">
-                    <label class="login-form-label" for="inputPassword">Password</label>
-                    <div class="login-input-wrap">
-                        <span class="material-symbols-outlined login-input-icon">lock</span>
-                        <input
-                            type="password"
-                            name="password"
-                            id="inputPassword"
-                            class="login-form-input"
-                            placeholder="Masukkan password akun..."
-                            required
-                            autocomplete="current-password"
-                            style="padding-right: 2.85rem;"
-                        >
-                        <button type="button" class="login-eye-toggle" id="togglePwdBtn" onclick="togglePwd()" tabindex="-1" title="Tampilkan / Sembunyikan Password">
-                            <span class="material-symbols-outlined" id="eyeIcon" style="font-size:19px;">visibility</span>
-                        </button>
-                    </div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:7px; display:flex; align-items:center; gap:6px;">
-                        <span class="material-symbols-outlined" style="font-size:16px; color:#2563eb; flex-shrink:0;">verified_user</span>
-                        <span>Mendukung password admin maupun PIN 4-digit operator</span>
-                    </div>
-                </div>
+                <!-- Mode 1: Admin Form (Standard Password) -->
+                <form method="POST" action="login" id="loginForm" novalidate>
+                    <input type="hidden" name="login_mode" value="standard">
 
-                <button type="submit" class="login-submit-btn" id="submitBtn">
-                    <span class="material-symbols-outlined" style="font-size:20px;">login</span>
-                    <span>Masuk ke Sistem</span>
-                </button>
-            </form>
-
-            <!-- Mode 2: Operator PIN Form (Touchpad / Numpad) -->
-            <form method="POST" action="login" id="pinForm" style="display:none;" novalidate>
-                <div class="login-form-group">
-                    <label class="login-form-label" for="pinUsernameSelect">Pilih Nama Operator</label>
-                    <div class="login-input-wrap">
-                        <span class="material-symbols-outlined login-input-icon">badge</span>
-                        <?php if (!empty($operators)): ?>
-                            <select name="username" id="pinUsernameSelect" class="login-form-input" style="appearance:none; -webkit-appearance:none; cursor:pointer; padding-right:2.5rem; font-weight:600;">
-                                <?php foreach ($operators as $op): ?>
-                                    <option value="<?= htmlspecialchars($op['username']) ?>">
-                                        <?= htmlspecialchars($op['name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <span class="material-symbols-outlined" style="position:absolute; right:14px; pointer-events:none; color:var(--text-muted); font-size:20px;">expand_more</span>
-                        <?php else: ?>
+                    <!-- Username Field with floating notch label -->
+                    <div class="input-notch-group">
+                        <label class="input-notch-label" for="inputUsername">Username</label>
+                        <div class="input-notch-box">
+                            <span class="material-symbols-outlined input-notch-icon">person</span>
                             <input
                                 type="text"
                                 name="username"
-                                id="pinUsernameSelect"
-                                class="login-form-input"
-                                placeholder="Username operator"
-                                value="operator"
+                                id="inputUsername"
+                                class="input-notch-field"
+                                placeholder="ADMIN"
                                 required
+                                autofocus
+                                autocomplete="username"
+                                value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
                             >
-                        <?php endif; ?>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Hidden PIN Secret Field -->
-                <input type="hidden" name="password" id="pinSecretInput" value="">
-                <input type="hidden" name="login_mode" value="pin">
-
-                <!-- 4-Digit PIN Indicator Dots -->
-                <div style="text-align:center; margin-top:1.15rem;">
-                    <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">
-                        Masukkan PIN 4-Digit
+                    <!-- Password Field with floating notch label -->
+                    <div class="input-notch-group">
+                        <label class="input-notch-label" for="inputPassword">Password</label>
+                        <div class="input-notch-box">
+                            <span class="material-symbols-outlined input-notch-icon">lock</span>
+                            <input
+                                type="password"
+                                name="password"
+                                id="inputPassword"
+                                class="input-notch-field"
+                                placeholder="••••••••"
+                                required
+                                autocomplete="current-password"
+                                style="padding-right: 2.85rem;"
+                            >
+                            <button type="button" class="input-pwd-toggle" id="togglePwdBtn" onclick="togglePwdVisibility()" tabindex="-1" title="Tampilkan / Sembunyikan Password">
+                                <span class="material-symbols-outlined" id="eyeIcon" style="font-size:19px;">visibility</span>
+                            </button>
+                        </div>
                     </div>
-                    <div class="pin-dots-container">
-                        <div class="pin-dot-view" id="dot0"></div>
-                        <div class="pin-dot-view" id="dot1"></div>
-                        <div class="pin-dot-view" id="dot2"></div>
-                        <div class="pin-dot-view" id="dot3"></div>
+
+                    <button type="submit" class="btn-submit-action" id="submitAdminBtn">
+                        <span>Masuk sebagai Admin</span>
+                        <span class="material-symbols-outlined" style="font-size:20px;">login</span>
+                    </button>
+                </form>
+
+                <!-- Mode 2: Operator PIN Form (Touchpad / Numpad) -->
+                <form method="POST" action="login" id="pinForm" style="display:none;" novalidate>
+                    <input type="hidden" name="login_mode" value="pin">
+                    <input type="hidden" name="password" id="pinSecretInput" value="">
+
+                    <!-- Operator Select Field -->
+                    <div class="input-notch-group">
+                        <label class="input-notch-label" for="pinUsernameSelect">Pilih Operator</label>
+                        <div class="input-notch-box">
+                            <span class="material-symbols-outlined input-notch-icon">badge</span>
+                            <?php if (!empty($operators)): ?>
+                                <select name="username" id="pinUsernameSelect" class="input-notch-field" style="appearance:none; -webkit-appearance:none; cursor:pointer; padding-right:2.5rem; font-weight:600;">
+                                    <?php foreach ($operators as $op): ?>
+                                        <option value="<?= htmlspecialchars($op['username']) ?>">
+                                            <?= htmlspecialchars($op['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <span class="material-symbols-outlined" style="position:absolute; right:14px; pointer-events:none; color:var(--text-muted); font-size:20px;">expand_more</span>
+                            <?php else: ?>
+                                <input
+                                    type="text"
+                                    name="username"
+                                    id="pinUsernameSelect"
+                                    class="input-notch-field"
+                                    placeholder="Username operator"
+                                    value="operator"
+                                    required
+                                >
+                            <?php endif; ?>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Touch Numeric Keypad -->
-                <div class="login-numpad">
-                    <?php foreach ([1,2,3,4,5,6,7,8,9,'',0,'⌫'] as $k): ?>
-                        <button type="button" class="login-pin-key<?= ($k === '') ? ' key-empty' : '' ?>" onclick="pressPinKey('<?= $k ?>')">
-                            <?= ($k === '⌫') ? '<span class="material-symbols-outlined" style="font-size:22px; color:#ef4444;">backspace</span>' : $k ?>
-                        </button>
-                    <?php endforeach; ?>
-                </div>
+                    <!-- 4-Digit PIN Indicator Dots -->
+                    <div style="text-align:center; margin-top:1.15rem;">
+                        <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">
+                            Masukkan PIN 4-Digit
+                        </div>
+                        <div class="pin-dots-bar">
+                            <div class="pin-dot-item" id="dot0"></div>
+                            <div class="pin-dot-item" id="dot1"></div>
+                            <div class="pin-dot-item" id="dot2"></div>
+                            <div class="pin-dot-item" id="dot3"></div>
+                        </div>
+                    </div>
 
-                <button type="submit" class="login-submit-btn" id="pinSubmitBtn" style="margin-top:1.25rem;">
-                    <span class="material-symbols-outlined" style="font-size:20px;">dialpad</span>
-                    <span>Masuk dengan PIN</span>
-                </button>
-            </form>
+                    <!-- Touch Numeric Keypad -->
+                    <div class="pin-keyboard-grid">
+                        <?php foreach ([1,2,3,4,5,6,7,8,9,'',0,'⌫'] as $k): ?>
+                            <button type="button" class="pin-key-btn<?= ($k === '') ? ' key-blank' : '' ?>" onclick="pressPinKey('<?= $k ?>')">
+                                <?= ($k === '⌫') ? '<span class="material-symbols-outlined" style="font-size:22px; color:#ef4444;">backspace</span>' : $k ?>
+                            </button>
+                        <?php endforeach; ?>
+                    </div>
 
-        </div>
+                    <button type="submit" class="btn-submit-action" id="pinSubmitBtn" style="margin-top:1.25rem;">
+                        <span>Masuk sebagai Operator</span>
+                        <span class="material-symbols-outlined" style="font-size:20px;">login</span>
+                    </button>
+                </form>
 
-        <!-- Security Footer -->
-        <div class="login-footer">
-            <div class="login-footer-copy">© 2026 Dhanielo-Marthinz | IMS</div>
-        </div>
-    </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Page Footer -->
+    <footer class="login-page-footer">
+        <div class="footer-left">Powered By Dhanielo-Marthinz</div>
+        <div class="footer-right">Versi 2.4 &bull; All Rights Reserved</div>
+    </footer>
 
     <script>
         let currentMode = 'standard';
@@ -732,21 +952,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         function switchLoginMode(mode) {
             currentMode = mode;
-            const tabStd = document.getElementById('tabStandard');
-            const tabPin = document.getElementById('tabPin');
+            const tabAdmin = document.getElementById('tabAdminBtn');
+            const tabOperator = document.getElementById('tabOperatorBtn');
+            const adminBadge = document.getElementById('adminBadge');
+            const opBadge = document.getElementById('operatorBadge');
             const formStd = document.getElementById('loginForm');
             const formPin = document.getElementById('pinForm');
 
             if (mode === 'pin') {
-                tabStd.classList.remove('active');
-                tabPin.classList.add('active');
+                tabAdmin.classList.remove('active');
+                tabAdmin.setAttribute('aria-selected', 'false');
+                adminBadge.classList.add('badge-inactive');
+
+                tabOperator.classList.add('active');
+                tabOperator.setAttribute('aria-selected', 'true');
+                opBadge.classList.remove('badge-inactive');
+
                 formStd.style.display = 'none';
                 formPin.style.display = 'block';
                 currentPin = '';
                 updatePinDisplay();
             } else {
-                tabPin.classList.remove('active');
-                tabStd.classList.add('active');
+                tabOperator.classList.remove('active');
+                tabOperator.setAttribute('aria-selected', 'false');
+                opBadge.classList.add('badge-inactive');
+
+                tabAdmin.classList.add('active');
+                tabAdmin.setAttribute('aria-selected', 'true');
+                adminBadge.classList.remove('badge-inactive');
+
                 formPin.style.display = 'none';
                 formStd.style.display = 'block';
                 const pwd = document.getElementById('inputPassword');
@@ -762,7 +996,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             updatePinDisplay();
 
-            // Auto submit ketika 4 digit lengkap
+            // Auto submit jika 4 digit PIN sudah terisi lengkap
             if (currentPin.length === PIN_LEN) {
                 setTimeout(() => {
                     const pinForm = document.getElementById('pinForm');
@@ -792,9 +1026,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 const dot = document.getElementById('dot' + i);
                 if (dot) {
                     if (i < currentPin.length) {
-                        dot.classList.add('filled');
+                        dot.classList.add('active');
                     } else {
-                        dot.classList.remove('filled');
+                        dot.classList.remove('active');
                     }
                 }
             }
@@ -816,7 +1050,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         });
 
-        function togglePwd() {
+        function togglePwdVisibility() {
             const inp = document.getElementById('inputPassword');
             const ico = document.getElementById('eyeIcon');
             const isHidden = inp.type === 'password';
@@ -824,12 +1058,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ico.textContent = isHidden ? 'visibility_off' : 'visibility';
         }
 
-        // Buka kembali tab PIN jika percobaan login PIN sebelumnya gagal
+        // Kembali ke mode PIN jika percobaan login PIN sebelumnya error
         <?php if ($loginMode === 'pin'): ?>
         switchLoginMode('pin');
         <?php endif; ?>
 
-        // Submit loading state on standard form
+        // Submit loading indicator pada standard form
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             const u = document.getElementById('inputUsername');
             const p = document.getElementById('inputPassword');
@@ -838,7 +1072,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (!u.value.trim() ? u : p).focus();
                 return;
             }
-            const btn = document.getElementById('submitBtn');
+            const btn = document.getElementById('submitAdminBtn');
             btn.disabled = true;
             btn.innerHTML = `
                 <div class="premium-balls-spinner spinner-xs" style="margin:0;">

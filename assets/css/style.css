@@ -3,10 +3,7 @@
    Bespoke, Clean, Artisanal SaaS Architecture (Linear / Stripe Standard)
    NO Tacky AI Gradients • NO Radioactive Neon Glows • High Ergonomics
    ========================================================================== */
-
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-
+/* Note: Google Fonts & Material Symbols are loaded directly via <link> in HTML <head> for performance and to prevent @import 404 errors */
 :root {
     /* ----------------------------------------------------------------------
        Surface & Neutral Hierarchy (Clean Slate Architecture)

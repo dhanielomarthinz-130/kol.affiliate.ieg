@@ -10,3 +10,6 @@ Thumbs.db
 scratch/
 _backup_*/
 *.sql
+uploads/tmp/*
+!uploads/tmp/.htaccess
+assets/image/*_original_square.*

@@ -11,7 +11,8 @@ if (session_status() === PHP_SESSION_NONE) {
 $httpHost = strtolower($_SERVER['HTTP_HOST'] ?? '');
 if (strpos($httpHost, 'great-site.net') !== false || strpos($httpHost, 'infinityfree') !== false) {
     $uri = $_SERVER['REQUEST_URI'] ?? '/';
-    header('Location: https://unmoving-faculty-bok.ngrok-free.dev' . $uri, true, 302);
+    $targetPath = (strpos($uri, '/kol.ieg') === 0) ? $uri : ('/kol.ieg' . $uri);
+    header('Location: https://unmoving-faculty-bok.ngrok-free.dev' . $targetPath, true, 302);
     exit;
 }
 
